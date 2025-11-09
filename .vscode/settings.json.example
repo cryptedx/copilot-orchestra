@@ -1,0 +1,10 @@
+{
+  "github.copilot.chat.mcp.servers": {
+    "copilot-orchestra-mcp": {
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/mcp-server/dist/index.js"
+      ]
+    }
+  }
+}
