@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
     "dev": "tsc --watch",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "mock:elicitation": "npm run build && node dist/mock-client.js"
   },
   "keywords": [
     "mcp",

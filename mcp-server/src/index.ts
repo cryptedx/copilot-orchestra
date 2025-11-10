@@ -10,9 +10,9 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
-    CallToolRequestSchema,
-    ListToolsRequestSchema,
-    Tool,
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 
 // Type definitions for our workflow inputs
@@ -109,8 +109,12 @@ const server = new Server(
     version: "1.0.0",
   },
   {
+    // Advertise server capabilities. Clients will still declare their own
+    // capabilities during initialization, but advertising `elicitation`
+    // makes intentions explicit and can help some clients feature-detect.
     capabilities: {
       tools: {},
+      elicitation: {},
     },
   }
 );
@@ -253,6 +257,75 @@ You can now commit these changes and proceed to the next phase.`;
     };
   }
 });
+
+// Simple runtime validator for the restricted elicitation schemas described in
+// `docs/Elicitation.md`. This validator supports flat object schemas with
+// primitive properties, `required`, `enum`, and basic type checks. It is
+// intentionally small to avoid adding dependencies.
+export function validateElicitationResponse(content: any, schema: any): { valid: boolean; errors?: string[] } {
+  const errors: string[] = [];
+
+  if (schema?.type !== 'object') {
+    return { valid: false, errors: ['Unsupported schema type: only "object" is supported'] };
+  }
+
+  const props = schema.properties || {};
+
+  // Check required
+  if (Array.isArray(schema.required)) {
+    for (const req of schema.required) {
+      if (content[req] === undefined) {
+        errors.push(`Missing required property: ${req}`);
+      }
+    }
+  }
+
+  // Check each provided property
+  for (const [key, value] of Object.entries(content || {})) {
+    const pschema = props[key];
+    if (!pschema) {
+      // Unknown properties are allowed but logged as a warning
+      continue;
+    }
+
+    const expectedType = pschema.type;
+    if (expectedType) {
+      if (expectedType === 'number' && typeof value !== 'number') {
+        errors.push(`Property ${key} expected number but got ${typeof value}`);
+      }
+      if (expectedType === 'string' && typeof value !== 'string') {
+        errors.push(`Property ${key} expected string but got ${typeof value}`);
+      }
+      if (expectedType === 'boolean' && typeof value !== 'boolean') {
+        errors.push(`Property ${key} expected boolean but got ${typeof value}`);
+      }
+      // enums
+      if (pschema.enum && !pschema.enum.includes(value)) {
+        errors.push(`Property ${key} value not in enum: ${value}`);
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors: errors.length ? errors : undefined };
+}
+
+// Process an elicitation response action. Returns an object describing the
+// outcome so the calling code (or a test) can act accordingly.
+export function processElicitationResponse(action: 'accept' | 'decline' | 'cancel', content: any, requestedSchema: any) {
+  if (action === 'accept') {
+    const { valid, errors } = validateElicitationResponse(content, requestedSchema);
+    if (!valid) {
+      return { status: 'invalid', errors };
+    }
+    return { status: 'accepted', content };
+  }
+
+  if (action === 'decline') {
+    return { status: 'declined' };
+  }
+
+  return { status: 'cancelled' };
+}
 
 /**
  * Start the server
