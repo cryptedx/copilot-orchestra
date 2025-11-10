@@ -36,7 +36,7 @@ Add the MCP server to your VS Code settings. The configuration location depends 
 
 #### Option A: Workspace Settings (Recommended for teams)
 
-Create or edit `.vscode/settings.json` in your project:
+Create `.vscode/settings.json` in your project root:
 
 ```json
 {
@@ -44,14 +44,14 @@ Create or edit `.vscode/settings.json` in your project:
     "copilot-orchestra-mcp": {
       "command": "node",
       "args": [
-        "/absolute/path/to/copilot-orchestra/mcp-server/dist/index.js"
+        "${workspaceFolder}/mcp-server/dist/index.js"
       ]
     }
   }
 }
 ```
 
-**Replace** `/absolute/path/to/copilot-orchestra` with the actual absolute path to your copilot-orchestra directory.
+**Note:** The `${workspaceFolder}` variable automatically resolves to your project path, making this configuration portable across different machines. If you prefer using an absolute path instead, replace it with the actual path to your copilot-orchestra directory.
 
 #### Option B: User Settings (For individual use across projects)
 

@@ -46,7 +46,6 @@ New files added:
 
 - `mcp-server/` - TypeScript MCP server implementation
 - `docs/MCP_SETUP.md` - Detailed setup and usage guide
-- `.vscode/settings.json.example` - Configuration template
 
 ## Migration Steps
 
@@ -80,8 +79,17 @@ Choose one:
 
 **Option A: Workspace Settings (Recommended)**
 
-```bash
-cp .vscode/settings.json.example .vscode/settings.json
+Create `.vscode/settings.json` in your project:
+
+```json
+{
+  "github.copilot.chat.mcp.servers": {
+    "copilot-orchestra-mcp": {
+      "command": "node",
+      "args": ["${workspaceFolder}/mcp-server/dist/index.js"]
+    }
+  }
+}
 ```
 
 **Option B: User Settings (Global)**

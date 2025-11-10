@@ -1,6 +1,0 @@
-# Ignore VS Code workspace settings (users should copy from .example)
-settings.json
-
-# Keep example files
-!settings.json.example
-!README.md
