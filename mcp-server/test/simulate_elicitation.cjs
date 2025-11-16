@@ -145,12 +145,12 @@ setTimeout(() => {
         // close stdin gently
         try {
             server.stdin.end();
-        } catch (e) {}
+        } catch (e) { }
         setTimeout(() => {
             // kill server if still running
             try {
                 server.kill();
-            } catch (e) {}
+            } catch (e) { }
         }, 200);
     });
 
