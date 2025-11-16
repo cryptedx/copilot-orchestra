@@ -1,6 +1,6 @@
 ---
 description: "Review code changes from a completed implementation phase."
-tools: ["search", "usages", "problems", "changes", "context7/*"]
+tools: ["search", "usages", "problems", "changes"]
 # model: GPT-5.1-Codex-Mini (Preview) (copilot)
 model: GPT-5 mini (copilot)
 ---

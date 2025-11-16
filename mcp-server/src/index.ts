@@ -125,7 +125,7 @@ const server = new Server(
  * Handle tool list requests
  */
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  console.error(`[${new Date().toISOString()}] ListTools requested`);
+  console.info(`[${new Date().toISOString()}] ListTools requested`);
   return { tools };
 });
 
@@ -332,7 +332,7 @@ export function processElicitationResponse(action: 'accept' | 'decline' | 'cance
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Copilot Orchestra MCP server running on stdio");
+  console.info("Copilot Orchestra MCP server running on stdio");
 }
 
 main().catch((error) => {

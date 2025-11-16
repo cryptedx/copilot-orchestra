@@ -13,7 +13,6 @@ tools:
     "fetch",
     "githubRepo",
     "todos",
-    "context7/*",
   ]
 # model: GPT-5.1-Codex-Mini (Preview) (copilot)
 model: GPT-5 mini (copilot)
