@@ -113,7 +113,9 @@ const server = new Server(
     // capabilities during initialization, but advertising `elicitation`
     // makes intentions explicit and can help some clients feature-detect.
     capabilities: {
-      tools: {},
+      tools: {
+        "listChanged": true
+      },
       elicitation: {},
     },
   }
@@ -123,6 +125,7 @@ const server = new Server(
  * Handle tool list requests
  */
 server.setRequestHandler(ListToolsRequestSchema, async () => {
+  console.error(`[${new Date().toISOString()}] ListTools requested`);
   return { tools };
 });
 
@@ -160,7 +163,7 @@ function buildPlanMessage(planSummary: string, planFilePath: string, openQuestio
   if (openQuestions && openQuestions.length) {
     msg += `\n\n**Open Questions:**\n${openQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}`;
   }
-  msg += `\n\nPlease review the plan and provide your decision.`;
+  msg += `\n\nUse the inline approval form to submit your decision (approve / request_revision).`;
   return msg;
 }
 
@@ -174,7 +177,7 @@ function buildPhaseMessage(
 ) {
   return `## Phase ${phaseNumber} Complete: ${phaseTitle}\n\n${summary}\n\n**Files Changed:**\n${filesChanged
     .map((f) => `- ${f}`)
-    .join("\n")}\n\n**Review Status:** ${reviewStatus}\n\n**Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\nYou can now commit these changes and proceed to the next phase.`;
+    .join("\n")}\n\n**Review Status:** ${reviewStatus}\n\n**Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\nUse the inline phase commit form to submit your decision (proceed / request_revision / abort).`;
 }
 
 function planElicitationResponse(args: any) {
@@ -184,18 +187,29 @@ function planElicitationResponse(args: any) {
     openQuestions?: string[];
   };
 
+  const message = buildPlanMessage(planSummary, planFilePath, openQuestions);
+
+  const requestedSchema = {
+    type: "object",
+    title: "Plan Approval",
+    description: "Review and approve or request revisions to the plan",
+    properties: {
+      decision: { type: "string", enum: ["approve", "request_revision"], title: "Decision" },
+      feedback: { type: "string", title: "Feedback (optional)" },
+    },
+    required: ["decision"],
+  } as const;
+
   return {
-    content: [{ type: "text", text: buildPlanMessage(planSummary, planFilePath, openQuestions) }],
-    elicit: {
-      type: "object",
-      title: "Plan Approval",
-      description: "Review and approve or request revisions to the plan",
-      properties: {
-        decision: { type: "string", enum: ["approve", "request_revision"], title: "Decision" },
-        feedback: { type: "string", title: "Feedback (optional)" },
-      },
-      required: ["decision"],
-    } as any,
+    // human-readable content shown in the chat stream
+    content: [{ type: "text", text: message }],
+    // MCP-compliant elicitation payload clients should recognize:
+    elicitation: {
+      message,
+      requestedSchema,
+    },
+    // backward-compatible alias for any clients expecting `elicit`:
+    elicit: requestedSchema as any,
   };
 }
 
@@ -216,22 +230,30 @@ function phaseElicitationResponse(args: any) {
     reviewStatus: string;
   };
 
-  return {
-    content: [{ type: "text", text: buildPhaseMessage(phaseNumber, phaseTitle, summary, filesChanged, commitMessage, reviewStatus) }],
-    elicit: {
-      type: "object",
-      title: "Phase Commit Confirmation",
-      description: "Confirm commit and proceed, request revisions, or abort",
-      properties: {
-        decision: {
-          type: "string",
-          enum: ["proceed", "request_revision", "abort"],
-          title: "Decision",
-        },
-        feedback: { type: "string", title: "Feedback (optional)" },
+  const message = buildPhaseMessage(phaseNumber, phaseTitle, summary, filesChanged, commitMessage, reviewStatus);
+
+  const requestedSchema = {
+    type: "object",
+    title: "Phase Commit Confirmation",
+    description: "Confirm commit and proceed, request revisions, or abort",
+    properties: {
+      decision: {
+        type: "string",
+        enum: ["proceed", "request_revision", "abort"],
+        title: "Decision",
       },
-      required: ["decision"],
-    } as any,
+      feedback: { type: "string", title: "Feedback (optional)" },
+    },
+    required: ["decision"],
+  } as const;
+
+  return {
+    content: [{ type: "text", text: message }],
+    elicitation: {
+      message,
+      requestedSchema,
+    },
+    elicit: requestedSchema as any,
   };
 }
 

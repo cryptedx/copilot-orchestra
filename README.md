@@ -364,14 +364,7 @@ Users should be able to register, login, and access protected routes.
 
 **2. You review and approve the plan**
 
-- The `Conductor` comes back to the user with the draft of the plan. At the bottom of the draft of the plan it may have "Open Questions". Provide answers like:
-
-    ```
-    Answers to open questions
-
-    1. Yes, use bcrypt for encrpyting passwords.
-    2. ...
-    ```
+- The `Conductor` comes back to the user with the draft of the plan. Immediately after presenting the synopsis, the `Conductor` will invoke the MCP plan approval tool and present an inline approval form. Use that inline form to choose `approve` or `request_revision` and optionally provide short feedback. Do NOT provide free‑text chat responses for approvals or decisions — always use the inline MCP form.
 
 **3. Implementation -> Review -> Commit Cycle - Phase 1**
 
@@ -395,7 +388,7 @@ Users should be able to register, login, and access protected routes.
     - Write comprehensive User model tests
     ```
 
-- **You make the commit and tell `Conductor` to continue with "Proceed to next phase" in the chat.**
+- **Approve the phase commit using the MCP inline form (select `proceed` to continue, `request_revision` to request changes, or `abort` to stop).** Do not reply with free‑text chat for these decisions.
 
 **4. Remaining Phases**
 The cycle repeats for each remaining phase:
@@ -440,7 +433,7 @@ Created after each phase commit, contains:
 - Tests created/changed.
 - Review status.
 - Git commit message used.
-- If you need to pick up the implementation cycle in the middle of a plan, due to interruption, you can tell the conductor to review the completed phase documents for context on where to start implementing again.
+- If you need to pick up the implementation cycle in the middle of a plan, due to interruption, request the Conductor to review the completed phase documents using the MCP tools (the Conductor will issue the appropriate elicitation request). Do not rely on free-text chat replies for this workflow.
 
 **Example:** `plans/user-authentication-phase-1-complete.md`
 
