@@ -12,7 +12,36 @@ server.stdout.setEncoding('utf8');
 server.stderr.setEncoding('utf8');
 
 server.stdout.on('data', (data) => {
-  process.stdout.write(`[server stdout] ${data}`);
+  // Buffer incoming data and parse Content-Length framed JSON-RPC responses
+  if (!server._rpcBuffer) server._rpcBuffer = Buffer.from('', 'utf8');
+  server._rpcBuffer = Buffer.concat([server._rpcBuffer, Buffer.from(data, 'utf8')]);
+
+  while (true) {
+    const buf = server._rpcBuffer;
+    const headerEnd = buf.indexOf('\r\n\r\n');
+    if (headerEnd === -1) break;
+    const header = buf.slice(0, headerEnd).toString('utf8');
+    const m = header.match(/Content-Length: (\d+)/i);
+    if (!m) {
+      // Not a JSON-RPC framed message; print and discard
+      process.stdout.write(`[server stdout] ${buf.toString('utf8')}\n`);
+      server._rpcBuffer = Buffer.from('', 'utf8');
+      break;
+    }
+    const len = parseInt(m[1], 10);
+    const totalLen = headerEnd + 4 + len;
+    if (buf.length < totalLen) break; // wait for more data
+    const jsonPayload = buf.slice(headerEnd + 4, totalLen).toString('utf8');
+    try {
+      const obj = JSON.parse(jsonPayload);
+      console.log('\n=== JSON-RPC Response Received ===');
+      console.log(JSON.stringify(obj, null, 2));
+      console.log('=== End Response ===\n');
+    } catch (err) {
+      process.stdout.write(`[server stdout] (invalid json) ${jsonPayload}\n`);
+    }
+    server._rpcBuffer = buf.slice(totalLen);
+  }
 });
 
 server.stderr.on('data', (data) => {
