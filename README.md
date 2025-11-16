@@ -166,13 +166,35 @@ By default, the Conductor agent will pause and wait for you to start a new chat 
    npm run build
    ```
 
-2. **Add to VS Code Settings:**
+2. **Configure MCP server:**
 
-   Edit `.vscode/settings.json` in your project (or User settings):
+   Create an `mcp.json` file either in your workspace `.vscode/` directory or in your user MCP config location. Example file path:
+
+   - Workspace: `.vscode/mcp.json`
+   - User: your editor's MCP config directory (platform dependent)
+
+   Example `mcp.json` content (use `${workspaceFolder}` for portability):
 
    ```json
    {
-     "github.copilot.chat.mcp.servers": {
+     "servers": {
+       "copilot-orchestra-mcp": {
+         "command": "node",
+         "args": ["${workspaceFolder}/mcp-server/dist/index.js"]
+       }
+     }
+   }
+
+   User-level example (macOS):
+
+   - Place a user MCP config file (e.g. `mcp.json`) in your editor's user data directory and include the same `servers` block.
+   - Example macOS location (Editor user data directory): `~/Library/Application Support/Code/User/mcp.json`.
+
+   Example (user‑level `mcp.json`):
+
+   ```json
+   {
+     "servers": {
        "copilot-orchestra-mcp": {
          "command": "node",
          "args": ["/absolute/path/to/copilot-orchestra/mcp-server/dist/index.js"]
@@ -181,11 +203,40 @@ By default, the Conductor agent will pause and wait for you to start a new chat 
    }
    ```
 
-   Replace `/absolute/path/to/copilot-orchestra` with your actual path.
+   User-level example (Windows 11):
+
+   - Place a user MCP config file (e.g. `mcp.json`) in your VS Code user data directory and include the same `servers` block.
+   - Example Windows location (Editor user data directory): `%APPDATA%\Code\User\mcp.json` or `C:\Users\<username>\AppData\Roaming\Code\User\mcp.json`.
+
+   Example (user‑level `mcp.json` for Windows):
+
+   ```json
+   {
+     "servers": {
+       "copilot-orchestra-mcp": {
+         "command": "node",
+         "args": ["C:\\full\\path\\to\\copilot-orchestra\\mcp-server\\dist\\index.js"]
+       }
+     }
+   }
+   ```
 
 3. **Restart VS Code Insiders**
 
-For detailed setup instructions, troubleshooting, and examples, see **[docs/MCP_SETUP.md](docs/MCP_SETUP.md)**.
+**Verify Installation:** Open Copilot Chat, select `Conductor` and ask "What tools do you have access to?" — confirm `copilot-orchestra-mcp/request_plan_approval` and `copilot-orchestra-mcp/request_phase_commit` are listed.
+
+**Troubleshooting MCP:**
+
+- `Check build: ls mcp-server/dist/index.js`
+- `Make executable: chmod +x mcp-server/dist/index.js`
+- `Get absolute path: (cd mcp-server/dist && pwd) -> use in settings`
+- `If tools not available: ensure the server path is correct and restart VS Code Insiders`
+
+**Migration & Rollback:**
+
+- `Backup Conductor: cp Conductor.agent.md Conductor.agent.md.backup`
+- `Update repo: git pull origin main`
+- `Rollback: mv Conductor.agent.md.backup Conductor.agent.md && remove mcp config from settings if needed`
 
 ### How It Works
 
