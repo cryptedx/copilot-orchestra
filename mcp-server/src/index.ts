@@ -180,7 +180,7 @@ function buildPhaseMessage(
     .join("\n")}\n\n**Review Status:** ${reviewStatus}\n\n**Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\nUse the inline phase commit form to submit your decision (proceed / request_revision / abort).`;
 }
 
-function planElicitationResponse(args: any) {
+async function planElicitationResponse(args: any) {
   const { planSummary, planFilePath, openQuestions } = args as {
     planSummary: string;
     planFilePath: string;
@@ -200,6 +200,19 @@ function planElicitationResponse(args: any) {
     required: ["decision"],
   } as const;
 
+  // Send elicitation/create notification to client
+  try {
+    await server.notification({
+      method: "elicitation/create",
+      params: {
+        message,
+        requestedSchema,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to send elicitation notification:", err);
+  }
+
   return {
     // human-readable content shown in the chat stream
     content: [{ type: "text", text: message }],
@@ -208,12 +221,10 @@ function planElicitationResponse(args: any) {
       message,
       requestedSchema,
     },
-    // backward-compatible alias for any clients expecting `elicit`:
-    elicit: requestedSchema as any,
   };
 }
 
-function phaseElicitationResponse(args: any) {
+async function phaseElicitationResponse(args: any) {
   const {
     phaseNumber,
     phaseTitle,
@@ -247,13 +258,25 @@ function phaseElicitationResponse(args: any) {
     required: ["decision"],
   } as const;
 
+  // Send elicitation/create notification to client
+  try {
+    await server.notification({
+      method: "elicitation/create",
+      params: {
+        message,
+        requestedSchema,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to send elicitation notification:", err);
+  }
+
   return {
     content: [{ type: "text", text: message }],
     elicitation: {
       message,
       requestedSchema,
     },
-    elicit: requestedSchema as any,
   };
 }
 
