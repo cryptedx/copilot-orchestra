@@ -11,7 +11,8 @@ tools:
     "fetch",
     "githubRepo",
   ]
-model: Claude Sonnet 4.5 (copilot)
+# model: GPT-5.1-Codex-Mini (Preview) (copilot)
+model: GPT-5 mini (copilot)
 ---
 
 You are a PLANNING SUBAGENT called by a parent CONDUCTOR agent.

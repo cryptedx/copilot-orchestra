@@ -169,6 +169,15 @@ To request information from a user, servers send an `elicitation/create` request
     "action": "cancel"
   }
 }
+
+## Server Implementation Note
+
+The reference `mcp-server` implementation provides small helper functions to keep server-side
+elicitation request generation DRY and consistent. See `mcp-server/src/index.ts` for the
+helpers: `buildPlanMessage`, `buildPhaseMessage`, `planElicitationResponse`, and
+`phaseElicitationResponse`. These utilities centralize message formatting and elicitation
+schema construction so tool handlers remain concise and easier to test.
+
 ```
 
 ## Message Flow
