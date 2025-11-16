@@ -2,7 +2,7 @@
 
 /**
  * GitHub Copilot Orchestra MCP Server
- * 
+ *
  * This MCP server provides interactive elicitation tools for the Copilot Orchestra workflow.
  * It enables inline user feedback at critical pause points without breaking the conversation flow.
  */
@@ -127,119 +127,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 /**
- * Handle tool execution with elicitation
+ * Handle tool execution with elicitation (uses DRY helpers)
  */
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   try {
     if (name === "request_plan_approval") {
-      const { planSummary, planFilePath, openQuestions } = args as {
-        planSummary: string;
-    const { name, arguments: args } = request.params;
-
-    try {
-      if (name === "request_plan_approval") {
-        return planElicitationResponse(args);
-      } else if (name === "request_phase_commit") {
-        return phaseElicitationResponse(args);
-      }
-
-      throw new Error(`Unknown tool: ${name}`);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error executing tool: ${errorMessage}`,
-          },
-        ],
-        isError: true,
-      };
+      return planElicitationResponse(args);
+    } else if (name === "request_phase_commit") {
+      return phaseElicitationResponse(args);
     }
+
+    throw new Error(`Unknown tool: ${name}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      content: [
         {
-
-  // --- DRY helpers: build messages & elicitation payloads ---
-  function buildPlanMessage(planSummary: string, planFilePath: string, openQuestions?: string[]) {
-    let msg = `## Plan Ready for Review\n\n${planSummary}\n\n**Plan file:** \`${planFilePath}\``;
-    if (openQuestions && openQuestions.length) {
-      msg += `\n\n**Open Questions:**\n${openQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}`;
-    }
-    msg += `\n\nPlease review the plan and provide your decision.`;
-    return msg;
-  }
-
-  function buildPhaseMessage(
-    phaseNumber: number,
-    phaseTitle: string,
-    summary: string,
-    filesChanged: string[],
-    commitMessage: string,
-    reviewStatus: string
-  ) {
-    return `## Phase ${phaseNumber} Complete: ${phaseTitle}\n\n${summary}\n\n**Files Changed:**\n${filesChanged
-      .map((f) => `- ${f}`)
-      .join("\n")}\n\n**Review Status:** ${reviewStatus}\n\n**Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\nYou can now commit these changes and proceed to the next phase.`;
-  }
-
-  function planElicitationResponse(args: any) {
-    const { planSummary, planFilePath, openQuestions } = args as {
-      planSummary: string;
-      planFilePath: string;
-      openQuestions?: string[];
-    };
-
-    return {
-      content: [{ type: "text", text: buildPlanMessage(planSummary, planFilePath, openQuestions) }],
-      elicit: {
-        type: "object",
-        title: "Plan Approval",
-        description: "Review and approve or request revisions to the plan",
-        properties: {
-          decision: { type: "string", enum: ["approve", "request_revision"], title: "Decision" },
-          feedback: { type: "string", title: "Feedback (optional)" },
-        },
-        required: ["decision"],
-      } as any,
-    };
-  }
-
-  function phaseElicitationResponse(args: any) {
-    const {
-      phaseNumber,
-      phaseTitle,
-      summary,
-      filesChanged,
-      commitMessage,
-      reviewStatus,
-    } = args as {
-      phaseNumber: number;
-      phaseTitle: string;
-      summary: string;
-      filesChanged: string[];
-      commitMessage: string;
-      reviewStatus: string;
-    };
-
-    return {
-      content: [{ type: "text", text: buildPhaseMessage(phaseNumber, phaseTitle, summary, filesChanged, commitMessage, reviewStatus) }],
-      elicit: {
-        type: "object",
-        title: "Phase Commit Confirmation",
-        description: "Confirm commit and proceed, request revisions, or abort",
-        properties: {
-          decision: {
-            type: "string",
-            enum: ["proceed", "request_revision", "abort"],
-            title: "Decision",
-          },
-          feedback: { type: "string", title: "Feedback (optional)" },
-        },
-        required: ["decision"],
-      } as any,
-    };
-  }
           type: "text",
           text: `Error executing tool: ${errorMessage}`,
         },
@@ -248,6 +153,87 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
 });
+
+// --- DRY helpers: build messages & elicitation payloads ---
+function buildPlanMessage(planSummary: string, planFilePath: string, openQuestions?: string[]) {
+  let msg = `## Plan Ready for Review\n\n${planSummary}\n\n**Plan file:** \`${planFilePath}\``;
+  if (openQuestions && openQuestions.length) {
+    msg += `\n\n**Open Questions:**\n${openQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}`;
+  }
+  msg += `\n\nPlease review the plan and provide your decision.`;
+  return msg;
+}
+
+function buildPhaseMessage(
+  phaseNumber: number,
+  phaseTitle: string,
+  summary: string,
+  filesChanged: string[],
+  commitMessage: string,
+  reviewStatus: string
+) {
+  return `## Phase ${phaseNumber} Complete: ${phaseTitle}\n\n${summary}\n\n**Files Changed:**\n${filesChanged
+    .map((f) => `- ${f}`)
+    .join("\n")}\n\n**Review Status:** ${reviewStatus}\n\n**Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\nYou can now commit these changes and proceed to the next phase.`;
+}
+
+function planElicitationResponse(args: any) {
+  const { planSummary, planFilePath, openQuestions } = args as {
+    planSummary: string;
+    planFilePath: string;
+    openQuestions?: string[];
+  };
+
+  return {
+    content: [{ type: "text", text: buildPlanMessage(planSummary, planFilePath, openQuestions) }],
+    elicit: {
+      type: "object",
+      title: "Plan Approval",
+      description: "Review and approve or request revisions to the plan",
+      properties: {
+        decision: { type: "string", enum: ["approve", "request_revision"], title: "Decision" },
+        feedback: { type: "string", title: "Feedback (optional)" },
+      },
+      required: ["decision"],
+    } as any,
+  };
+}
+
+function phaseElicitationResponse(args: any) {
+  const {
+    phaseNumber,
+    phaseTitle,
+    summary,
+    filesChanged,
+    commitMessage,
+    reviewStatus,
+  } = args as {
+    phaseNumber: number;
+    phaseTitle: string;
+    summary: string;
+    filesChanged: string[];
+    commitMessage: string;
+    reviewStatus: string;
+  };
+
+  return {
+    content: [{ type: "text", text: buildPhaseMessage(phaseNumber, phaseTitle, summary, filesChanged, commitMessage, reviewStatus) }],
+    elicit: {
+      type: "object",
+      title: "Phase Commit Confirmation",
+      description: "Confirm commit and proceed, request revisions, or abort",
+      properties: {
+        decision: {
+          type: "string",
+          enum: ["proceed", "request_revision", "abort"],
+          title: "Decision",
+        },
+        feedback: { type: "string", title: "Feedback (optional)" },
+      },
+      required: ["decision"],
+    } as any,
+  };
+}
 
 // Simple runtime validator for the restricted elicitation schemas described in
 // `docs/Elicitation.md`. This validator supports flat object schemas with
