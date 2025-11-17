@@ -135,10 +135,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
+  console.info(`[${new Date().toISOString()}] TRACE: CallTool received: ${name}`);
+  console.info(`[${new Date().toISOString()}] TRACE: Arguments: ${JSON.stringify(args, null, 2)}`);
+
   try {
     if (name === "request_plan_approval") {
+      console.info(`[${new Date().toISOString()}] TRACE: Invoking planElicitationResponse`);
       return planElicitationResponse(args);
     } else if (name === "request_phase_commit") {
+      console.info(`[${new Date().toISOString()}] TRACE: Invoking phaseElicitationResponse`);
       return phaseElicitationResponse(args);
     }
 
@@ -201,6 +206,10 @@ async function planElicitationResponse(args: any) {
   } as const;
 
   // Send elicitation/create notification to client
+  console.info(`[${new Date().toISOString()}] TRACE: Sending elicitation/create notification for PLAN APPROVAL`);
+  console.info(`[${new Date().toISOString()}] TRACE: Message preview: ${message.substring(0, 100)}...`);
+  console.info(`[${new Date().toISOString()}] TRACE: Schema: ${JSON.stringify(requestedSchema)}`);
+  
   try {
     await server.notification({
       method: "elicitation/create",
@@ -209,8 +218,9 @@ async function planElicitationResponse(args: any) {
         requestedSchema,
       },
     });
+    console.info(`[${new Date().toISOString()}] TRACE: ✅ elicitation/create notification sent successfully`);
   } catch (err) {
-    console.error("Failed to send elicitation notification:", err);
+    console.error(`[${new Date().toISOString()}] ERROR: ❌ Failed to send elicitation notification:`, err);
   }
 
   return {
@@ -259,6 +269,10 @@ async function phaseElicitationResponse(args: any) {
   } as const;
 
   // Send elicitation/create notification to client
+  console.info(`[${new Date().toISOString()}] TRACE: Sending elicitation/create notification for PHASE COMMIT`);
+  console.info(`[${new Date().toISOString()}] TRACE: Phase ${phaseNumber}: ${phaseTitle}`);
+  console.info(`[${new Date().toISOString()}] TRACE: Schema: ${JSON.stringify(requestedSchema)}`);
+  
   try {
     await server.notification({
       method: "elicitation/create",
@@ -267,8 +281,9 @@ async function phaseElicitationResponse(args: any) {
         requestedSchema,
       },
     });
+    console.info(`[${new Date().toISOString()}] TRACE: ✅ elicitation/create notification sent successfully`);
   } catch (err) {
-    console.error("Failed to send elicitation notification:", err);
+    console.error(`[${new Date().toISOString()}] ERROR: ❌ Failed to send elicitation notification:`, err);
   }
 
   return {
