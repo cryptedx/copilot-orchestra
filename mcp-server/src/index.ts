@@ -125,7 +125,7 @@ const server = new Server(
  * Handle tool list requests
  */
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  console.info(`[${new Date().toISOString()}] ListTools requested`);
+  console.error(`[${new Date().toISOString()}] ListTools requested`);
   return { tools };
 });
 
@@ -135,15 +135,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
-  console.info(`[${new Date().toISOString()}] TRACE: CallTool received: ${name}`);
-  console.info(`[${new Date().toISOString()}] TRACE: Arguments: ${JSON.stringify(args, null, 2)}`);
+  console.error(`[${new Date().toISOString()}] TRACE: CallTool received: ${name}`);
+  console.error(`[${new Date().toISOString()}] TRACE: Arguments: ${JSON.stringify(args, null, 2)}`);
 
   try {
     if (name === "request_plan_approval") {
-      console.info(`[${new Date().toISOString()}] TRACE: Invoking planElicitationResponse`);
+      console.error(`[${new Date().toISOString()}] TRACE: Invoking planElicitationResponse`);
       return planElicitationResponse(args);
     } else if (name === "request_phase_commit") {
-      console.info(`[${new Date().toISOString()}] TRACE: Invoking phaseElicitationResponse`);
+      console.error(`[${new Date().toISOString()}] TRACE: Invoking phaseElicitationResponse`);
       return phaseElicitationResponse(args);
     }
 
@@ -206,9 +206,9 @@ async function planElicitationResponse(args: any) {
   } as const;
 
   // Send elicitation/create notification to client
-  console.info(`[${new Date().toISOString()}] TRACE: Sending elicitation/create notification for PLAN APPROVAL`);
-  console.info(`[${new Date().toISOString()}] TRACE: Message preview: ${message.substring(0, 100)}...`);
-  console.info(`[${new Date().toISOString()}] TRACE: Schema: ${JSON.stringify(requestedSchema)}`);
+  console.error(`[${new Date().toISOString()}] TRACE: Sending elicitation/create notification for PLAN APPROVAL`);
+  console.error(`[${new Date().toISOString()}] TRACE: Message preview: ${message.substring(0, 100)}...`);
+  console.error(`[${new Date().toISOString()}] TRACE: Schema: ${JSON.stringify(requestedSchema)}`);
   
   try {
     await server.notification({
@@ -218,7 +218,7 @@ async function planElicitationResponse(args: any) {
         requestedSchema,
       },
     });
-    console.info(`[${new Date().toISOString()}] TRACE: ✅ elicitation/create notification sent successfully`);
+    console.error(`[${new Date().toISOString()}] TRACE: ✅ elicitation/create notification sent successfully`);
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ERROR: ❌ Failed to send elicitation notification:`, err);
   }
@@ -269,9 +269,9 @@ async function phaseElicitationResponse(args: any) {
   } as const;
 
   // Send elicitation/create notification to client
-  console.info(`[${new Date().toISOString()}] TRACE: Sending elicitation/create notification for PHASE COMMIT`);
-  console.info(`[${new Date().toISOString()}] TRACE: Phase ${phaseNumber}: ${phaseTitle}`);
-  console.info(`[${new Date().toISOString()}] TRACE: Schema: ${JSON.stringify(requestedSchema)}`);
+  console.error(`[${new Date().toISOString()}] TRACE: Sending elicitation/create notification for PHASE COMMIT`);
+  console.error(`[${new Date().toISOString()}] TRACE: Phase ${phaseNumber}: ${phaseTitle}`);
+  console.error(`[${new Date().toISOString()}] TRACE: Schema: ${JSON.stringify(requestedSchema)}`);
   
   try {
     await server.notification({
@@ -281,7 +281,7 @@ async function phaseElicitationResponse(args: any) {
         requestedSchema,
       },
     });
-    console.info(`[${new Date().toISOString()}] TRACE: ✅ elicitation/create notification sent successfully`);
+    console.error(`[${new Date().toISOString()}] TRACE: ✅ elicitation/create notification sent successfully`);
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ERROR: ❌ Failed to send elicitation notification:`, err);
   }
@@ -370,7 +370,7 @@ export function processElicitationResponse(action: 'accept' | 'decline' | 'cance
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.info("Copilot Orchestra MCP server running on stdio");
+  console.error("Copilot Orchestra MCP server running on stdio");
 }
 
 main().catch((error) => {
