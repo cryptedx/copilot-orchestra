@@ -15,7 +15,8 @@ tools:
     "todos",
   ]
 # model: GPT-5.1-Codex-Mini (Preview) (copilot)
-model: GPT-5 mini (copilot)
+# model: GPT-5 mini (copilot)
+model: Claude Sonnet 4.5 (copilot)
 ---
 
 You are an IMPLEMENTATION SUBAGENT. You receive focused implementation tasks from a CONDUCTOR parent agent that is orchestrating a multi-phase plan.

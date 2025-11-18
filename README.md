@@ -14,7 +14,7 @@ The system solves a critical challenge in AI-assisted development: maintaining c
 - **✅ TDD Enforcement** - Strict Test Driven Development: writing failing tests, seeing them fail, writing minimal code to pass, and verifying success before proceeding.
 - **🔍 Quality Gates** - Automated code review after each phase ensures standards are met before moving forward.
 - **📋 Documentation Trail** - Comprehensive plan files and phase completion records create an audit trail for reviewing all work completed.
-- **⚡ Inline User Feedback** - MCP elicitation enables seamless user input without breaking conversation flow (optional setup).
+- **⚡ MCP Elicitation (native UI prompts)** - MCP elicitation enables seamless user input via native UI prompts without breaking conversation flow (optional setup).
 - **🔄 Iterative Cycles** - Each implementation phase follows the complete cycle: implement → review → commit before proceeding to the next phase.
 - **💎 Keeps Context Concise** - The majority of the work is done in dedicated subagents, each with its own context window and dedciated prompt. This helps reduce hallucinations as the context window fills up.
 
@@ -59,8 +59,8 @@ The Orchestra system consists of four specialized agents:
 
 Before using the GitHub Copilot Orchestra, ensure you have:
 
-- **VS Code Insiders** - Required for the custom chat modes feature that enables subagents and handing tasks off to them.
-  - Download from: <https://code.visualstudio.com/insiders/>
+- **VS Code** - Required for the custom chat modes feature that enables subagents and handing tasks off to them.
+  - Download from: <https://code.visualstudio.com/>
 
 - **GitHub Copilot Subscription** - Active subscription required for AI-powered agents
   - Individual or Business plan
@@ -72,7 +72,7 @@ Before using the GitHub Copilot Orchestra, ensure you have:
 
 - **Node.js 18+** (Optional) - Only required if using MCP elicitation feature
   - For building and running the MCP server
-  - Enables inline user feedback without breaking conversation flow
+  - Enables MCP elicitation via native UI prompts without breaking conversation flow
 
 ## Installation
 
@@ -88,20 +88,20 @@ Before using the GitHub Copilot Orchestra, ensure you have:
    Alternatively, download the repository as a ZIP file and extract it to your desired location or just copy the contents of the agent files from the browser.
 
 2. **Verify Prerequisites**
-    - Ensure the latest VSCode Insiders is installed and running.
+    - Ensure the latest VSCode is installed and running.
     - Confirm the GitHub Copilot Chat extension is active (check the chat icon in the sidebar).
     - Verify your workspace is a git repository (run `git status` to confirm)
         - If not, you can use `git init` if you have git installed.
 
 ### Setup Custom Agents
 
-The GitHub Copilot Orchestra uses custom chat modes in VSCode Insiders to enable the multi-agent workflow. Each `.agent.md` file defines a specialized AI agent.
+The GitHub Copilot Orchestra uses custom chat modes in VSCode to enable the multi-agent workflow. Each `.agent.md` file defines a specialized AI agent.
 
-1. **Open VSCode Insiders** in your workspace directory
+1. **Open VSCode** in your workspace directory
 
     ```bash
     cd /path/to/your/project
-    code-insiders .
+    code .
     ```
 
 2. **Locate Agent Files** - The repository includes four `.agent.md` files in the root directory:
@@ -115,9 +115,9 @@ The GitHub Copilot Orchestra uses custom chat modes in VSCode Insiders to enable
         - Great for sharing among a team.
         - Scoped to the individual project.
     - **Install the custom agents in your User Data for use in all workspaces**
-        - Allows the custom agents to work in any project you open with VSCode Insiders.
+        - Allows the custom agents to work in any project you open with VSCode.
         - Copy files to the User Data location:
-            - Something like `/Users/username/Library/Application Support/Code - Insiders/User/prompts` on Mac, or the equivalent on your system
+            - Something like `/Users/username/Library/Application Support/Code/User/prompts` on Mac, or the equivalent on your system
         - **OR:**
         - Manual Setup Process:
             - Click the chat mode dropdown at the bottom of the copilot chat.
@@ -153,7 +153,7 @@ By default, the Conductor agent will pause and wait for you to start a new chat 
 
 - **Continuous Conversation Flow** - No need to start new chat sessions at pause points
 - **Cost Efficiency** - Single session instead of multiple premium model requests
-- **Inline Prompts** - Structured forms appear directly in the chat for your input
+- **MCP Elicitation Prompts** - Structured native UI prompts appear directly in the chat for your input
 - **Better UX** - Natural back-and-forth without context switching
 
 ### Quick Setup
@@ -184,6 +184,7 @@ By default, the Conductor agent will pause and wait for you to start a new chat 
        }
      }
    }
+   ```
 
    User-level example (macOS):
 
@@ -221,16 +222,42 @@ By default, the Conductor agent will pause and wait for you to start a new chat 
    }
    ```
 
-3. **Restart VS Code Insiders**
+3. **Restart VS Code**
 
 **Verify Installation:** Open Copilot Chat, select `Conductor` and ask "What tools do you have access to?" — confirm `copilot-orchestra-mcp/request_plan_approval` and `copilot-orchestra-mcp/request_phase_commit` are listed.
+
+### Updating the MCP Server
+
+**Important:** After making any changes to the MCP server code (files in `mcp-server/src/`), you **must** rebuild the server before the changes take effect.
+
+1. **Rebuild the server:**
+
+   ```bash
+   cd mcp-server
+   npm run build
+   ```
+
+2. **Reload VS Code:**
+   - Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+   - Type "Developer: Reload Window"
+   - Press Enter
+
+   **Note:** A full window reload is recommended to ensure the MCP server restarts with the new code. Simply restarting the Copilot Chat may not always pick up the changes.
+
+**Common scenarios requiring rebuild:**
+
+- Modifying tool definitions or parameters
+- Changing server logic or behavior
+- Updating dependencies in `package.json`
+- Adding new tools or features
 
 **Troubleshooting MCP:**
 
 - `Check build: ls mcp-server/dist/index.js`
 - `Make executable: chmod +x mcp-server/dist/index.js`
 - `Get absolute path: (cd mcp-server/dist && pwd) -> use in settings`
-- `If tools not available: ensure the server path is correct and restart VS Code Insiders`
+- `If tools not available: ensure the server path is correct and restart VS Code`
+- `After code changes: always rebuild with npm run build and reload the window`
 
 **Migration & Rollback:**
 
@@ -242,8 +269,8 @@ By default, the Conductor agent will pause and wait for you to start a new chat 
 
 With MCP elicitation enabled:
 
-- **Plan Approval:** Inline dropdown appears with "approve" or "request revision" options
-- **Phase Commits:** Inline form with "proceed", "request revision", or "abort" options
+- **Plan Approval:** MCP elicitation dropdown appears with "approve" or "request revision" options
+- **Phase Commits:** MCP elicitation form with "proceed", "request revision", or "abort" options
 - **Feedback:** Optional text fields let you provide specific guidance
 
 All within a single continuous conversation!
@@ -364,7 +391,7 @@ Users should be able to register, login, and access protected routes.
 
 **2. You review and approve the plan**
 
-- The `Conductor` comes back to the user with the draft of the plan. Immediately after presenting the synopsis, the `Conductor` will invoke the MCP plan approval tool and present an inline approval form. Use that inline form to choose `approve` or `request_revision` and optionally provide short feedback. Do NOT provide free‑text chat responses for approvals or decisions — always use the inline MCP form.
+- The `Conductor` comes back to the user with the draft of the plan. Immediately after presenting the synopsis, the `Conductor` will invoke the MCP plan approval tool and present the MCP elicitation UI (native UI prompt). Use that approval prompt to choose `approve` or `request_revision` and optionally provide short feedback. Do NOT provide free‑text chat responses for approvals or decisions — always use the MCP elicitation UI (native UI prompt).
 
 **3. Implementation -> Review -> Commit Cycle - Phase 1**
 
@@ -388,7 +415,7 @@ Users should be able to register, login, and access protected routes.
     - Write comprehensive User model tests
     ```
 
-- **Approve the phase commit using the MCP inline form (select `proceed` to continue, `request_revision` to request changes, or `abort` to stop).** Do not reply with free‑text chat for these decisions.
+- **Approve the phase commit using the MCP elicitation UI (native UI prompt) (select `proceed` to continue, `request_revision` to request changes, or `abort` to stop).** Do not reply with free‑text chat for these decisions.
 
 **4. Remaining Phases**
 The cycle repeats for each remaining phase:
@@ -517,7 +544,7 @@ Each agent is defined in a `.agent.md` file that you can modify:
 **Adjust AI Model:**
 
 - Change to other models.
-- Available models in VSCode Insiders, as of the Nov. 5th, 2025:
+- Available models in VSCode, as of the Nov. 5th, 2025:
   - `Auto (copilot)`
   - `Claude Sonnet 4.5 (copilot)`
   - `Claude Haiku 4.5 (copilot)`
