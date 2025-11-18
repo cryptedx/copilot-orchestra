@@ -11,7 +11,11 @@
     "build": "tsc && chmod +x dist/index.js",
     "dev": "tsc --watch",
     "prepare": "npm run build",
-    "mock:elicitation": "npm run build && node dist/mock-client.js"
+    "mock:elicitation": "npm run build && node dist/mock-client.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "keywords": [
     "mcp",
@@ -27,6 +31,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.3.0"
+    "@vitest/coverage-v8": "^4.0.10",
+    "@vitest/ui": "^4.0.10",
+    "typescript": "^5.3.0",
+    "vitest": "^4.0.10"
   }
 }

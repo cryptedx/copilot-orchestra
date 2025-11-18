@@ -4,237 +4,129 @@
  * GitHub Copilot Orchestra MCP Server
  *
  * This MCP server provides interactive elicitation tools for the Copilot Orchestra workflow.
- * It enables inline user feedback at critical pause points without breaking the conversation flow.
+ * It enables MCP elicitation via native UI prompts at critical pause points without breaking the conversation flow.
  */
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  Tool,
-} from "@modelcontextprotocol/sdk/types.js";
-
-// Type definitions for our workflow inputs
-interface PlanApprovalInput {
-  decision: "approve" | "request_revision";
-  feedback?: string;
-}
-
-interface PhaseCommitInput {
-  decision: "proceed" | "request_revision" | "abort";
-  feedback?: string;
-}
+import { z } from "zod";
 
 /**
- * Tool definitions with elicitation schemas
+ * Server configuration
  */
-const tools: Tool[] = [
-  {
-    name: "request_plan_approval",
-    description:
-      "Request user approval for the implementation plan. Uses elicitation to get inline user feedback.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        planSummary: {
-          type: "string",
-          description: "Brief summary of the plan to present to the user",
-        },
-        planFilePath: {
-          type: "string",
-          description: "Path to the plan file for reference",
-        },
-        openQuestions: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of open questions or decision points",
-        },
-      },
-      required: ["planSummary", "planFilePath"],
-    },
-  },
-  {
-    name: "request_phase_commit",
-    description:
-      "Request user confirmation to commit the completed phase. Uses elicitation to get inline user feedback.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        phaseNumber: {
-          type: "number",
-          description: "The phase number that was completed",
-        },
-        phaseTitle: {
-          type: "string",
-          description: "Title of the completed phase",
-        },
-        summary: {
-          type: "string",
-          description: "Summary of what was accomplished",
-        },
-        filesChanged: {
-          type: "array",
-          items: { type: "string" },
-          description: "List of files that were created or modified",
-        },
-        commitMessage: {
-          type: "string",
-          description: "Proposed git commit message",
-        },
-        reviewStatus: {
-          type: "string",
-          enum: ["APPROVED", "APPROVED_WITH_RECOMMENDATIONS"],
-          description: "Code review status",
-        },
-      },
-      required: [
-        "phaseNumber",
-        "phaseTitle",
-        "summary",
-        "filesChanged",
-        "commitMessage",
-        "reviewStatus",
-      ],
-    },
-  },
-];
+export const SERVER_CONFIG = {
+  name: "copilot-orchestra-mcp",
+  version: "1.0.0",
+};
 
-/**
- * Create and configure the MCP server
- */
-const server = new Server(
-  {
-    name: "copilot-orchestra-mcp",
-    version: "1.0.0",
-  },
-  {
-    // Advertise server capabilities. Clients will still declare their own
-    // capabilities during initialization, but advertising `elicitation`
-    // makes intentions explicit and can help some clients feature-detect.
-    capabilities: {
-      tools: {
-        "listChanged": true
-      },
-      elicitation: {},
-    },
+const DEBUG_ELICITATION_VALUES = new Set(["1", "true", "yes", "on", "debug"]);
+
+function isElicitationDebugEnabled() {
+  const flag = process.env.MCP_DEBUG_ELICITATION;
+  return flag ? DEBUG_ELICITATION_VALUES.has(flag.toLowerCase()) : false;
+}
+
+function logElicitationDebug(context: string, message: string, requestedSchema: any) {
+  if (!isElicitationDebugEnabled()) {
+    return;
   }
-);
 
-/**
- * Handle tool list requests
- */
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  console.error(`[${new Date().toISOString()}] ListTools requested`);
-  return { tools };
-});
-
-/**
- * Handle tool execution with elicitation (uses DRY helpers)
- */
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  console.error(`[${new Date().toISOString()}] TRACE: CallTool received: ${name}`);
-  console.error(`[${new Date().toISOString()}] TRACE: Arguments: ${JSON.stringify(args, null, 2)}`);
-
-  try {
-    if (name === "request_plan_approval") {
-      console.error(`[${new Date().toISOString()}] TRACE: Invoking planElicitationResponse`);
-      return planElicitationResponse(args);
-    } else if (name === "request_phase_commit") {
-      console.error(`[${new Date().toISOString()}] TRACE: Invoking phaseElicitationResponse`);
-      return phaseElicitationResponse(args);
-    }
-
-    throw new Error(`Unknown tool: ${name}`);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Error executing tool: ${errorMessage}`,
-        },
-      ],
-      isError: true,
-    };
-  }
-});
-
-// --- DRY helpers: build messages & elicitation payloads ---
-function buildPlanMessage(planSummary: string, planFilePath: string, openQuestions?: string[]) {
-  let msg = `## Plan Ready for Review\n\n${planSummary}\n\n**Plan file:** \`${planFilePath}\``;
-  if (openQuestions && openQuestions.length) {
-    msg += `\n\n**Open Questions:**\n${openQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}`;
-  }
-  msg += `\n\nUse the inline approval form to submit your decision (approve / request_revision).`;
-  return msg;
-}
-
-function buildPhaseMessage(
-  phaseNumber: number,
-  phaseTitle: string,
-  summary: string,
-  filesChanged: string[],
-  commitMessage: string,
-  reviewStatus: string
-) {
-  return `## Phase ${phaseNumber} Complete: ${phaseTitle}\n\n${summary}\n\n**Files Changed:**\n${filesChanged
-    .map((f) => `- ${f}`)
-    .join("\n")}\n\n**Review Status:** ${reviewStatus}\n\n**Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\nUse the inline phase commit form to submit your decision (proceed / request_revision / abort).`;
-}
-
-async function planElicitationResponse(args: any) {
-  const { planSummary, planFilePath, openQuestions } = args as {
-    planSummary: string;
-    planFilePath: string;
-    openQuestions?: string[];
+  const payload = {
+    context,
+    message,
+    requestedSchema,
   };
 
-  const message = buildPlanMessage(planSummary, planFilePath, openQuestions);
+  console.error(
+    `[${new Date().toISOString()}] DEBUG: elicitation payload\n${JSON.stringify(payload, null, 2)}`
+  );
+}
+
+/**
+ * Request elicitation from the client using the built-in elicitInput method
+ */
+export async function requestElicitation(
+  server: McpServer,
+  message: string,
+  requestedSchema: any,
+  context = "generic"
+) {
+  logElicitationDebug(context, message, requestedSchema);
+
+  return await server.server.elicitInput({
+    message,
+    requestedSchema,
+  });
+}
+
+/**
+ * Request plan approval via elicitation
+ */
+export async function planElicitationResponse(server: McpServer, args: any) {
+  const { planSummary, planFilePath, openQuestions = [] } = args;
+
+  let message = `## Implementation Plan Ready for Review\n\n`;
+  message += `**Summary:** ${planSummary}\n\n`;
+  message += `**Plan File:** ${planFilePath}\n\n`;
+  if (openQuestions.length > 0) {
+    message += `### Open Questions:\n`;
+    message += openQuestions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n') + `\n\n`;
+  }
+  message += `Please review the plan and provide your decision.`;
 
   const requestedSchema = {
     type: "object",
-    title: "Plan Approval",
-    description: "Review and approve or request revisions to the plan",
     properties: {
-      decision: { type: "string", enum: ["approve", "request_revision"], title: "Decision" },
-      feedback: { type: "string", title: "Feedback (optional)" },
+      decision: { 
+        type: "string", 
+        enum: ["approve", "request_revision"], 
+        title: "Decision",
+        description: "Choose whether to approve the plan or request revisions"
+      },
+      feedback: { 
+        type: "string", 
+        title: "Feedback (optional)",
+        description: "Optional feedback or comments about the plan"
+      },
     },
     required: ["decision"],
-  } as const;
-
-  // Send elicitation/create notification to client
-  console.error(`[${new Date().toISOString()}] TRACE: Sending elicitation/create notification for PLAN APPROVAL`);
-  console.error(`[${new Date().toISOString()}] TRACE: Message preview: ${message.substring(0, 100)}...`);
-  console.error(`[${new Date().toISOString()}] TRACE: Schema: ${JSON.stringify(requestedSchema)}`);
-  
-  try {
-    await server.notification({
-      method: "elicitation/create",
-      params: {
-        message,
-        requestedSchema,
-      },
-    });
-    console.error(`[${new Date().toISOString()}] TRACE: ✅ elicitation/create notification sent successfully`);
-  } catch (err) {
-    console.error(`[${new Date().toISOString()}] ERROR: ❌ Failed to send elicitation notification:`, err);
-  }
-
-  return {
-    // human-readable content shown in the chat stream
-    content: [{ type: "text", text: message }],
-    // MCP-compliant elicitation payload clients should recognize:
-    elicitation: {
-      message,
-      requestedSchema,
-    },
   };
+
+  try {
+    const result = await requestElicitation(server, message, requestedSchema, "request_plan_approval");
+    
+    // Process the result based on user action
+    if (result.action === 'accept' && result.content) {
+      const { decision, feedback } = result.content;
+      const responseText = decision === 'approve' 
+        ? `✅ Plan approved!${feedback ? ` Feedback: ${feedback}` : ''}`
+        : `📝 Revisions requested${feedback ? `: ${feedback}` : ''}`;
+      
+      return {
+        content: [{ type: "text" as const, text: responseText }]
+      };
+    } else if (result.action === 'decline') {
+      return {
+        content: [{ type: "text" as const, text: "Plan review declined" }]
+      };
+    } else {
+      return {
+        content: [{ type: "text" as const, text: "Plan review cancelled" }]
+      };
+    }
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] ERROR: elicitation failed:`, err);
+    return {
+      content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+      isError: true
+    };
+  }
 }
 
-async function phaseElicitationResponse(args: any) {
+/**
+ * Request phase commit confirmation via elicitation
+ */
+export async function phaseElicitationResponse(server: McpServer, args: any) {
   const {
     phaseNumber,
     phaseTitle,
@@ -251,129 +143,154 @@ async function phaseElicitationResponse(args: any) {
     reviewStatus: string;
   };
 
-  const message = buildPhaseMessage(phaseNumber, phaseTitle, summary, filesChanged, commitMessage, reviewStatus);
+  let message = `## Phase ${phaseNumber} Complete: ${phaseTitle}\n\n${summary}\n\n`;
+  message += `**Files Changed:**\n${filesChanged.map((f) => `- ${f}`).join("\n")}\n\n`;
+  message += `**Review Status:** ${reviewStatus}\n\n`;
+  message += `**Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\n`;
+  message += `Please confirm to proceed.`;
 
   const requestedSchema = {
     type: "object",
-    title: "Phase Commit Confirmation",
-    description: "Confirm commit and proceed, request revisions, or abort",
     properties: {
       decision: {
         type: "string",
         enum: ["proceed", "request_revision", "abort"],
         title: "Decision",
+        description: "Choose whether to proceed, request revisions, or abort"
       },
-      feedback: { type: "string", title: "Feedback (optional)" },
+      feedback: { 
+        type: "string", 
+        title: "Feedback (optional)",
+        description: "Optional feedback or comments"
+      },
     },
     required: ["decision"],
-  } as const;
+  };
 
-  // Send elicitation/create notification to client
-  console.error(`[${new Date().toISOString()}] TRACE: Sending elicitation/create notification for PHASE COMMIT`);
-  console.error(`[${new Date().toISOString()}] TRACE: Phase ${phaseNumber}: ${phaseTitle}`);
-  console.error(`[${new Date().toISOString()}] TRACE: Schema: ${JSON.stringify(requestedSchema)}`);
-  
   try {
-    await server.notification({
-      method: "elicitation/create",
-      params: {
-        message,
-        requestedSchema,
-      },
-    });
-    console.error(`[${new Date().toISOString()}] TRACE: ✅ elicitation/create notification sent successfully`);
+    const result = await requestElicitation(server, message, requestedSchema, "request_phase_commit");
+    
+    // Process the result based on user action
+    if (result.action === 'accept' && result.content) {
+      const { decision, feedback } = result.content;
+      let responseText = '';
+      if (decision === 'proceed') {
+        responseText = `✅ Phase ${phaseNumber} approved!${feedback ? ` Feedback: ${feedback}` : ''}`;
+      } else if (decision === 'request_revision') {
+        responseText = `📝 Revisions requested for phase ${phaseNumber}${feedback ? `: ${feedback}` : ''}`;
+      } else {
+        responseText = `⛔ Phase ${phaseNumber} aborted${feedback ? `: ${feedback}` : ''}`;
+      }
+      
+      return {
+        content: [{ type: "text" as const, text: responseText }]
+      };
+    } else if (result.action === 'decline') {
+      return {
+        content: [{ type: "text" as const, text: `Phase ${phaseNumber} review declined` }]
+      };
+    } else {
+      return {
+        content: [{ type: "text" as const, text: `Phase ${phaseNumber} review cancelled` }]
+      };
+    }
   } catch (err) {
-    console.error(`[${new Date().toISOString()}] ERROR: ❌ Failed to send elicitation notification:`, err);
+    console.error(`[${new Date().toISOString()}] ERROR: elicitation failed:`, err);
+    return {
+      content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
+      isError: true
+    };
   }
+}
 
-  return {
-    content: [{ type: "text", text: message }],
-    elicitation: {
-      message,
-      requestedSchema,
-    },
+/**
+ * Tool handler for request_plan_approval
+ */
+export function createPlanApprovalHandler(server: McpServer) {
+  return async (args: any) => {
+    console.error(`[${new Date().toISOString()}] TRACE: request_plan_approval called`);
+    return planElicitationResponse(server, args);
   };
 }
 
-// Simple runtime validator for the restricted elicitation schemas described in
-// `docs/Elicitation.md`. This validator supports flat object schemas with
-// primitive properties, `required`, `enum`, and basic type checks. It is
-// intentionally small to avoid adding dependencies.
-export function validateElicitationResponse(content: any, schema: any): { valid: boolean; errors?: string[] } {
-  const errors: string[] = [];
-
-  if (schema?.type !== 'object') {
-    return { valid: false, errors: ['Unsupported schema type: only "object" is supported'] };
-  }
-
-  const props = schema.properties || {};
-
-  // Check required
-  if (Array.isArray(schema.required)) {
-    for (const req of schema.required) {
-      if (content[req] === undefined) {
-        errors.push(`Missing required property: ${req}`);
-      }
-    }
-  }
-
-  // Check each provided property
-  for (const [key, value] of Object.entries(content || {})) {
-    const pschema = props[key];
-    if (!pschema) {
-      // Unknown properties are allowed but logged as a warning
-      continue;
-    }
-
-    const expectedType = pschema.type;
-    if (expectedType) {
-      if (expectedType === 'number' && typeof value !== 'number') {
-        errors.push(`Property ${key} expected number but got ${typeof value}`);
-      }
-      if (expectedType === 'string' && typeof value !== 'string') {
-        errors.push(`Property ${key} expected string but got ${typeof value}`);
-      }
-      if (expectedType === 'boolean' && typeof value !== 'boolean') {
-        errors.push(`Property ${key} expected boolean but got ${typeof value}`);
-      }
-      // enums
-      if (pschema.enum && !pschema.enum.includes(value)) {
-        errors.push(`Property ${key} value not in enum: ${value}`);
-      }
-    }
-  }
-
-  return { valid: errors.length === 0, errors: errors.length ? errors : undefined };
+/**
+ * Tool handler for request_phase_commit
+ */
+export function createPhaseCommitHandler(server: McpServer) {
+  return async (args: any) => {
+    console.error(`[${new Date().toISOString()}] TRACE: request_phase_commit called`);
+    return phaseElicitationResponse(server, args);
+  };
 }
 
-// Process an elicitation response action. Returns an object describing the
-// outcome so the calling code (or a test) can act accordingly.
-export function processElicitationResponse(action: 'accept' | 'decline' | 'cancel', content: any, requestedSchema: any) {
-  if (action === 'accept') {
-    const { valid, errors } = validateElicitationResponse(content, requestedSchema);
-    if (!valid) {
-      return { status: 'invalid', errors };
+/**
+ * Create and configure the MCP server
+ */
+export function createServer() {
+  const mcpServer = new McpServer(
+    SERVER_CONFIG,
+    {
+      capabilities: {
+        tools: {
+          listChanged: true,
+        },
+        elicitation: {},
+      },
     }
-    return { status: 'accepted', content };
-  }
+  );
 
-  if (action === 'decline') {
-    return { status: 'declined' };
-  }
+  /**
+   * Register request_plan_approval tool
+   */
+  mcpServer.registerTool(
+    "request_plan_approval",
+    {
+      description: "Request user approval for the implementation plan. Uses elicitation to get user feedback via the MCP elicitation UI (native prompt).",
+      inputSchema: {
+        planSummary: z.string().describe("Brief summary of the implementation plan"),
+        planFilePath: z.string().describe("Path to the plan file"),
+        openQuestions: z.array(z.string()).optional().describe("List of open questions to be addressed")
+      }
+    },
+    createPlanApprovalHandler(mcpServer)
+  );
 
-  return { status: 'cancelled' };
+  /**
+   * Register request_phase_commit tool
+   */
+  mcpServer.registerTool(
+    "request_phase_commit",
+    {
+      description: "Request user confirmation to commit the completed phase. Uses elicitation to get user feedback via the MCP elicitation UI (native prompt).",
+      inputSchema: {
+        phaseNumber: z.number().describe("The phase number"),
+        phaseTitle: z.string().describe("Title of the phase"),
+        summary: z.string().describe("Summary of what was accomplished"),
+        filesChanged: z.array(z.string()).describe("List of files that were changed"),
+        commitMessage: z.string().describe("Proposed commit message"),
+        reviewStatus: z.string().describe("Review status (e.g., APPROVED, NEEDS_REVISION)")
+      }
+    },
+    createPhaseCommitHandler(mcpServer)
+  );
+
+  return mcpServer;
 }
 
 /**
  * Start the server
  */
-async function main() {
+export async function main() {
+  const mcpServer = createServer();
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await mcpServer.connect(transport);
   console.error("Copilot Orchestra MCP server running on stdio");
 }
 
-main().catch((error) => {
-  console.error("Fatal error in main():", error);
-  process.exit(1);
-});
+// Run main if this is the entry point
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((error) => {
+    console.error("Fatal error in main():", error);
+    process.exit(1);
+  });
+}
