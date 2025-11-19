@@ -81,11 +81,11 @@ function sendRequestsAndWait() {
             // noop; presence of printed responses is sufficient for now
         }, 100);
 
-        // 1) callTool-style request
+        // 1) tools/call request
         const callToolReq = {
             jsonrpc: '2.0',
             id: 1,
-            method: 'callTool',
+            method: 'tools/call',
             params: {
                 name: 'request_plan_approval',
                 arguments: {
@@ -96,7 +96,7 @@ function sendRequestsAndWait() {
             }
         };
 
-        console.log('\n--- Sending callTool request ---');
+        console.log('\n--- Sending tools/call request ---');
         pendingIds.add(callToolReq.id);
         writeJsonRpc(callToolReq);
 

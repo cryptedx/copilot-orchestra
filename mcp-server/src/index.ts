@@ -19,43 +19,13 @@ export const SERVER_CONFIG = {
   version: "1.0.0",
 };
 
-const DEBUG_ELICITATION_VALUES = new Set(["1", "true", "yes", "on", "debug"]);
-
-function isElicitationDebugEnabled() {
-  const flag = process.env.MCP_DEBUG_ELICITATION;
-  return flag ? DEBUG_ELICITATION_VALUES.has(flag.toLowerCase()) : false;
-}
-
-function logElicitationDebug(context: string, message: string, requestedSchema: any) {
-  if (!isElicitationDebugEnabled()) {
-    return;
-  }
-
-  const payload = {
-    context,
-    message,
-    requestedSchema,
-  };
-
-  console.error(
-    `[${new Date().toISOString()}] DEBUG: elicitation payload\n${JSON.stringify(payload, null, 2)}`
-  );
-}
-
 /**
  * Request elicitation from the client using the built-in elicitInput method
  */
-export async function requestElicitation(
-  server: McpServer,
-  message: string,
-  requestedSchema: any,
-  context = "generic"
-) {
-  logElicitationDebug(context, message, requestedSchema);
-
+export async function requestElicitation(server: McpServer, message: string, requestedSchema: any) {
   return await server.server.elicitInput({
     message,
-    requestedSchema,
+    requestedSchema
   });
 }
 
@@ -79,7 +49,8 @@ export async function planElicitationResponse(server: McpServer, args: any) {
     properties: {
       decision: { 
         type: "string", 
-        enum: ["approve", "request_revision"], 
+        enum: ["approve", "request_revision"],
+        enumNames: ["Approve", "Request Revision"],
         title: "Decision",
         description: "Choose whether to approve the plan or request revisions"
       },
@@ -93,7 +64,7 @@ export async function planElicitationResponse(server: McpServer, args: any) {
   };
 
   try {
-    const result = await requestElicitation(server, message, requestedSchema, "request_plan_approval");
+    const result = await requestElicitation(server, message, requestedSchema);
     
     // Process the result based on user action
     if (result.action === 'accept' && result.content) {
@@ -155,6 +126,7 @@ export async function phaseElicitationResponse(server: McpServer, args: any) {
       decision: {
         type: "string",
         enum: ["proceed", "request_revision", "abort"],
+        enumNames: ["Proceed", "Request Revision", "Abort"],
         title: "Decision",
         description: "Choose whether to proceed, request revisions, or abort"
       },
@@ -168,7 +140,7 @@ export async function phaseElicitationResponse(server: McpServer, args: any) {
   };
 
   try {
-    const result = await requestElicitation(server, message, requestedSchema, "request_phase_commit");
+    const result = await requestElicitation(server, message, requestedSchema);
     
     // Process the result based on user action
     if (result.action === 'accept' && result.content) {

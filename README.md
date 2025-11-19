@@ -59,8 +59,8 @@ The Orchestra system consists of four specialized agents:
 
 Before using the GitHub Copilot Orchestra, ensure you have:
 
-- **VS Code** - Required for the custom chat modes feature that enables subagents and handing tasks off to them.
-  - Download from: <https://code.visualstudio.com/>
+- **VS Code Insiders** - Required for the custom chat modes feature that enables subagents and handing tasks off to them.
+  - Download from: <https://code.visualstudio.com/insiders/>
 
 - **GitHub Copilot Subscription** - Active subscription required for AI-powered agents
   - Individual or Business plan
@@ -69,10 +69,6 @@ Before using the GitHub Copilot Orchestra, ensure you have:
 - **Git** - Version control is integral to the workflow
   - Used for commit workflow at end of each phase
   - Recommended: Basic familiarity with git commands
-
-- **Node.js 18+** (Optional) - Only required if using MCP elicitation feature
-  - For building and running the MCP server
-  - Enables MCP elicitation via native UI prompts without breaking conversation flow
 
 ## Installation
 
