@@ -22,17 +22,44 @@ export const SERVER_CONFIG = {
 /**
  * Request elicitation from the client using the built-in elicitInput method
  */
-export async function requestElicitation(server: McpServer, message: string, requestedSchema: any) {
-  return await server.server.elicitInput({
-    message,
-    requestedSchema
-  }, { timeout: 300000 } as any); // Increase timeout to 5 minutes
+export async function requestElicitation(server: McpServer, message: string, requestedSchema: any, progressToken?: string | number) {
+  let interval: NodeJS.Timeout | undefined;
+
+  if (progressToken) {
+    // Send initial progress immediately
+    server.server.sendProgress({
+      progressToken,
+      progress: 0,
+      total: 100,
+      message: "Waiting for user input..."
+    }).catch(err => console.error("Failed to send progress:", err));
+
+    interval = setInterval(() => {
+      server.server.sendProgress({
+        progressToken,
+        progress: 0,
+        total: 100,
+        message: "Waiting for user input..."
+      }).catch(err => console.error("Failed to send progress:", err));
+    }, 5000);
+  }
+
+  try {
+    return await server.server.elicitInput({
+      message,
+      requestedSchema
+    }, { timeout: 300000 } as any); // Increase timeout to 5 minutes
+  } finally {
+    if (interval) {
+      clearInterval(interval);
+    }
+  }
 }
 
 /**
  * Request plan approval via elicitation
  */
-export async function planElicitationResponse(server: McpServer, args: any) {
+export async function planElicitationResponse(server: McpServer, args: any, progressToken?: string | number) {
   const { planSummary, planFilePath, openQuestions = [] } = args;
 
   let message = `## Implementation Plan Ready for Review\n\n`;
@@ -64,7 +91,7 @@ export async function planElicitationResponse(server: McpServer, args: any) {
   };
 
   try {
-    const result = await requestElicitation(server, message, requestedSchema);
+    const result = await requestElicitation(server, message, requestedSchema, progressToken);
     
     // Process the result based on user action
     if (result.action === 'accept' && result.content) {
@@ -97,7 +124,7 @@ export async function planElicitationResponse(server: McpServer, args: any) {
 /**
  * Request phase commit confirmation via elicitation
  */
-export async function phaseElicitationResponse(server: McpServer, args: any) {
+export async function phaseElicitationResponse(server: McpServer, args: any, progressToken?: string | number) {
   const {
     phaseNumber,
     phaseTitle,
@@ -140,7 +167,7 @@ export async function phaseElicitationResponse(server: McpServer, args: any) {
   };
 
   try {
-    const result = await requestElicitation(server, message, requestedSchema);
+    const result = await requestElicitation(server, message, requestedSchema, progressToken);
     
     // Process the result based on user action
     if (result.action === 'accept' && result.content) {
@@ -179,9 +206,15 @@ export async function phaseElicitationResponse(server: McpServer, args: any) {
  * Tool handler for request_plan_approval
  */
 export function createPlanApprovalHandler(server: McpServer) {
-  return async (args: any) => {
+  return async (args: any, extra: any) => {
     console.error(`[${new Date().toISOString()}] TRACE: request_plan_approval called`);
-    return planElicitationResponse(server, args);
+    // Extract progress token from extra context if available
+    // The structure depends on the SDK, but typically it's in request.params.meta.progressToken
+    const progressToken = extra?.request?.params?.meta?.progressToken;
+    if (progressToken) {
+      console.error(`[${new Date().toISOString()}] TRACE: Found progress token: ${progressToken}`);
+    }
+    return planElicitationResponse(server, args, progressToken);
   };
 }
 
@@ -189,9 +222,14 @@ export function createPlanApprovalHandler(server: McpServer) {
  * Tool handler for request_phase_commit
  */
 export function createPhaseCommitHandler(server: McpServer) {
-  return async (args: any) => {
+  return async (args: any, extra: any) => {
     console.error(`[${new Date().toISOString()}] TRACE: request_phase_commit called`);
-    return phaseElicitationResponse(server, args);
+    // Extract progress token from extra context if available
+    const progressToken = extra?.request?.params?.meta?.progressToken;
+    if (progressToken) {
+      console.error(`[${new Date().toISOString()}] TRACE: Found progress token: ${progressToken}`);
+    }
+    return phaseElicitationResponse(server, args, progressToken);
   };
 }
 

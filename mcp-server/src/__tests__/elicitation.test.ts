@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { requestElicitation } from '../index.js';
 
 describe('requestElicitation', () => {
@@ -19,7 +19,7 @@ describe('requestElicitation', () => {
     expect(mockElicitInput).toHaveBeenCalledWith({
       message,
       requestedSchema: schema
-    });
+    }, expect.anything());
   });
 
   it('should include message and requestedSchema in params', async () => {
@@ -71,5 +71,72 @@ describe('requestElicitation', () => {
     await expect(
       requestElicitation(mockServer, 'test', {})
     ).rejects.toThrow('Network error');
+  });
+
+  describe('with progress', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should send progress updates when progressToken is provided', async () => {
+      const mockSendProgress = vi.fn().mockResolvedValue(undefined);
+      const mockElicitInput = vi.fn().mockImplementation(async () => {
+        // Simulate delay
+        await new Promise(resolve => setTimeout(resolve, 10000));
+        return { action: 'accept', content: {} };
+      });
+
+      const mockServer = {
+        server: {
+          elicitInput: mockElicitInput,
+          sendProgress: mockSendProgress
+        }
+      } as unknown as McpServer;
+
+      const message = 'Test message';
+      const schema = { type: 'object', properties: {} };
+      const progressToken = 'test-token';
+
+      // Start the request
+      const promise = requestElicitation(mockServer, message, schema, progressToken);
+
+      // Advance time to trigger interval
+      await vi.advanceTimersByTimeAsync(6000); // 6 seconds
+
+      // Check if progress was sent
+      expect(mockSendProgress).toHaveBeenCalledWith({
+        progressToken,
+        progress: 0,
+        total: 100,
+        message: "Waiting for user input..."
+      });
+
+      // Advance more time
+      await vi.advanceTimersByTimeAsync(5000);
+
+      // Finish the request
+      await vi.runAllTimersAsync();
+      await promise;
+    });
+
+    it('should not send progress updates when progressToken is missing', async () => {
+      const mockSendProgress = vi.fn();
+      const mockElicitInput = vi.fn().mockResolvedValue({ action: 'accept', content: {} });
+
+      const mockServer = {
+        server: {
+          elicitInput: mockElicitInput,
+          sendProgress: mockSendProgress
+        }
+      } as unknown as McpServer;
+
+      await requestElicitation(mockServer, 'test', {});
+
+      expect(mockSendProgress).not.toHaveBeenCalled();
+    });
   });
 });
