@@ -26,7 +26,7 @@ export async function requestElicitation(server: McpServer, message: string, req
   return await server.server.elicitInput({
     message,
     requestedSchema
-  });
+  }, { timeout: 300000 } as any); // Increase timeout to 5 minutes
 }
 
 /**
