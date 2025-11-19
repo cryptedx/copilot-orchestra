@@ -22,6 +22,37 @@ The system solves a critical challenge in AI-assisted development: maintaining c
 
 The Orchestra system consists of four specialized agents:
 
+### System Architecture
+
+```mermaid
+graph TD
+    User[👤 User] <-->|Chat Interface| VSCode[💻 VS Code]
+    
+    subgraph "Orchestra Agents"
+        Conductor[🎼 Conductor Agent]
+        Planning[🧠 Planning Subagent]
+        Implement[🔨 Implement Subagent]
+        Review[👀 Code Review Subagent]
+    end
+    
+    subgraph "Infrastructure"
+        MCP[🔌 MCP Server]
+        FS[📂 File System]
+    end
+
+    VSCode <--> Conductor
+    Conductor -->|Delegates| Planning
+    Conductor -->|Delegates| Implement
+    Conductor -->|Delegates| Review
+    
+    Conductor <-->|Elicitation| MCP
+    
+    Planning -->|Reads| FS
+    Implement -->|Reads/Writes| FS
+    Review -->|Reads| FS
+    Conductor -->|Writes Plans| FS
+```
+
 ### Conductor Agent
 
 - `Conductor.agent.md` - Main orchestration agent that manages the complete development cycle.
