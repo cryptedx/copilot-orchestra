@@ -9,7 +9,7 @@ describe('Tool Handler Factories', () => {
     
     const mockElicitInput = vi.fn().mockResolvedValue({
       action: 'accept',
-      content: { decision: 'approve' }
+      content: { decision: '✅ Approve Plan' }
     });
     
     const mockServer = {
@@ -17,7 +17,7 @@ describe('Tool Handler Factories', () => {
     } as unknown as McpServer;
 
     const handler = createPlanApprovalHandler(mockServer);
-    const result = await handler(mockPlanArgs);
+    const result = await handler(mockPlanArgs, {});
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining('TRACE: request_plan_approval called')
@@ -32,7 +32,7 @@ describe('Tool Handler Factories', () => {
     
     const mockElicitInput = vi.fn().mockResolvedValue({
       action: 'accept',
-      content: { decision: 'proceed' }
+      content: { decision: '🚀 Proceed to Next Phase' }
     });
     
     const mockServer = {
@@ -40,7 +40,7 @@ describe('Tool Handler Factories', () => {
     } as unknown as McpServer;
 
     const handler = createPhaseCommitHandler(mockServer);
-    const result = await handler(mockPhaseArgs);
+    const result = await handler(mockPhaseArgs, {});
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining('TRACE: request_phase_commit called')
@@ -60,7 +60,7 @@ describe('Tool Handler Factories', () => {
     } as unknown as McpServer;
 
     const handler = createPlanApprovalHandler(mockServer);
-    const result = await handler(mockPlanArgs);
+    const result = await handler(mockPlanArgs, {});
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Error: Handler error');

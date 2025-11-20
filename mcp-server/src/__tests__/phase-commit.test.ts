@@ -33,7 +33,7 @@ describe('phaseElicitationResponse', () => {
     const message = callArgs.message;
 
     mockPhaseArgs.filesChanged.forEach(file => {
-      expect(message).toContain(`- ${file}`);
+      expect(message).toContain(`- \`${file}\``);
     });
   });
 
@@ -63,14 +63,14 @@ describe('phaseElicitationResponse', () => {
     const callArgs = mockElicitInput.mock.calls[0][0];
     const schema = callArgs.requestedSchema;
 
-    expect(schema.properties.decision.enum).toEqual(['proceed', 'request_revision', 'abort']);
+    expect(schema.properties.decision.enum).toEqual(['🚀 Proceed to Next Phase', '📝 Request Changes', '🛑 Abort Process']);
     expect(schema.required).toContain('decision');
     expect(schema.properties.feedback).toBeDefined();
   });
 
   it('should return success message on proceed decision', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(
-      mockElicitationResult.accept({ decision: 'proceed' })
+      mockElicitationResult.accept({ decision: '🚀 Proceed to Next Phase' })
     );
     const mockServer = {
       server: { elicitInput: mockElicitInput }
@@ -83,7 +83,7 @@ describe('phaseElicitationResponse', () => {
 
   it('should return revision message on request_revision decision', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(
-      mockElicitationResult.accept({ decision: 'request_revision' })
+      mockElicitationResult.accept({ decision: '📝 Request Changes' })
     );
     const mockServer = {
       server: { elicitInput: mockElicitInput }
@@ -96,7 +96,7 @@ describe('phaseElicitationResponse', () => {
 
   it('should return abort message on abort decision', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(
-      mockElicitationResult.accept({ decision: 'abort' })
+      mockElicitationResult.accept({ decision: '🛑 Abort Process' })
     );
     const mockServer = {
       server: { elicitInput: mockElicitInput }
@@ -110,7 +110,7 @@ describe('phaseElicitationResponse', () => {
   it('should include feedback in response when provided', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(
       mockElicitationResult.accept({ 
-        decision: 'proceed',
+        decision: '🚀 Proceed to Next Phase',
         feedback: 'Great work!'
       })
     );
@@ -180,7 +180,7 @@ describe('phaseElicitationResponse', () => {
     const message = callArgs.message;
 
     argsWithManyFiles.filesChanged.forEach(file => {
-      expect(message).toContain(`- ${file}`);
+      expect(message).toContain(`- \`${file}\``);
     });
   });
 
@@ -190,7 +190,7 @@ describe('phaseElicitationResponse', () => {
       filesChanged: []
     };
 
-    const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'proceed' }));
+    const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: '🚀 Proceed to Next Phase' }));
     const mockServer = {
       server: { elicitInput: mockElicitInput }
     } as unknown as McpServer;

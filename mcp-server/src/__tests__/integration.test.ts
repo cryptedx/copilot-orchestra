@@ -8,7 +8,7 @@ describe('Integration Tests', () => {
       const mockElicitInput = vi.fn()
         .mockResolvedValueOnce({
           action: 'accept',
-          content: { decision: 'approve', feedback: 'Looks good!' }
+          content: { decision: '✅ Approve Plan', feedback: 'Looks good!' }
         });
 
       const mockServer = {
@@ -32,7 +32,7 @@ describe('Integration Tests', () => {
       const mockElicitInput = vi.fn()
         .mockResolvedValueOnce({
           action: 'accept',
-          content: { decision: 'request_revision', feedback: 'Add more detail' }
+          content: { decision: '📝 Request Changes', feedback: 'Add more detail' }
         });
 
       const mockServer = {
@@ -57,7 +57,7 @@ describe('Integration Tests', () => {
       const mockElicitInput = vi.fn()
         .mockResolvedValueOnce({
           action: 'accept',
-          content: { decision: 'proceed' }
+          content: { decision: '🚀 Proceed to Next Phase' }
         });
 
       const mockServer = {
@@ -83,7 +83,7 @@ describe('Integration Tests', () => {
       const mockElicitInput = vi.fn()
         .mockResolvedValueOnce({
           action: 'accept',
-          content: { decision: 'abort', feedback: 'Critical issue found' }
+          content: { decision: '🛑 Abort Process', feedback: 'Critical issue found' }
         });
 
       const mockServer = {
@@ -148,7 +148,7 @@ describe('Integration Tests', () => {
         .mockRejectedValueOnce(new Error('Temporary failure'))
         .mockResolvedValueOnce({
           action: 'accept',
-          content: { decision: 'approve' }
+          content: { decision: '✅ Approve Plan' }
         });
 
       const mockServer = {
@@ -175,7 +175,7 @@ describe('Integration Tests', () => {
       const longMessage = 'A'.repeat(10000);
       const mockElicitInput = vi.fn().mockResolvedValue({
         action: 'accept',
-        content: { decision: 'approve' }
+        content: { decision: '✅ Approve Plan' }
       });
 
       const mockServer = {
@@ -199,7 +199,7 @@ describe('Integration Tests', () => {
       const specialChars = 'Test with émojis 🎉 and spëcial çharacters ñ';
       const mockElicitInput = vi.fn().mockResolvedValue({
         action: 'accept',
-        content: { decision: 'proceed' }
+        content: { decision: '🚀 Proceed to Next Phase' }
       });
 
       const mockServer = {

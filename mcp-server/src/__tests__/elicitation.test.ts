@@ -19,7 +19,7 @@ describe('requestElicitation', () => {
     expect(mockElicitInput).toHaveBeenCalledWith({
       message,
       requestedSchema: schema
-    }, expect.anything());
+    });
   });
 
   it('should include message and requestedSchema in params', async () => {
@@ -83,7 +83,7 @@ describe('requestElicitation', () => {
     });
 
     it('should send progress updates when progressToken is provided', async () => {
-      const mockSendProgress = vi.fn().mockResolvedValue(undefined);
+      const mockNotifyProgress = vi.fn().mockResolvedValue(undefined);
       const mockElicitInput = vi.fn().mockImplementation(async () => {
         // Simulate delay
         await new Promise(resolve => setTimeout(resolve, 10000));
@@ -91,9 +91,9 @@ describe('requestElicitation', () => {
       });
 
       const mockServer = {
+        notifyProgress: mockNotifyProgress,
         server: {
-          elicitInput: mockElicitInput,
-          sendProgress: mockSendProgress
+          elicitInput: mockElicitInput
         }
       } as unknown as McpServer;
 
@@ -108,11 +108,13 @@ describe('requestElicitation', () => {
       await vi.advanceTimersByTimeAsync(6000); // 6 seconds
 
       // Check if progress was sent
-      expect(mockSendProgress).toHaveBeenCalledWith({
-        progressToken,
-        progress: 0,
-        total: 100,
-        message: "Waiting for user input..."
+      expect(mockNotifyProgress).toHaveBeenCalledWith({
+        token: progressToken,
+        value: {
+          kind: "report",
+          message: "⏳ Waiting for your decision in the Copilot window …",
+          percentage: 0,
+        },
       });
 
       // Advance more time
@@ -124,19 +126,19 @@ describe('requestElicitation', () => {
     });
 
     it('should not send progress updates when progressToken is missing', async () => {
-      const mockSendProgress = vi.fn();
+      const mockNotifyProgress = vi.fn();
       const mockElicitInput = vi.fn().mockResolvedValue({ action: 'accept', content: {} });
 
       const mockServer = {
+        notifyProgress: mockNotifyProgress,
         server: {
-          elicitInput: mockElicitInput,
-          sendProgress: mockSendProgress
+          elicitInput: mockElicitInput
         }
       } as unknown as McpServer;
 
       await requestElicitation(mockServer, 'test', {});
 
-      expect(mockSendProgress).not.toHaveBeenCalled();
+      expect(mockNotifyProgress).not.toHaveBeenCalled();
     });
   });
 });

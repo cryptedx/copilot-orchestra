@@ -49,14 +49,14 @@ describe('planElicitationResponse', () => {
     const callArgs = mockElicitInput.mock.calls[0][0];
     const schema = callArgs.requestedSchema;
 
-    expect(schema.properties.decision.enum).toEqual(['approve', 'request_revision']);
+    expect(schema.properties.decision.enum).toEqual(['✅ Approve Plan', '📝 Request Changes']);
     expect(schema.required).toContain('decision');
     expect(schema.properties.feedback).toBeDefined();
   });
 
   it('should return success message on approve decision', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(
-      mockElicitationResult.accept({ decision: 'approve' })
+      mockElicitationResult.accept({ decision: '✅ Approve Plan' })
     );
     const mockServer = {
       server: { elicitInput: mockElicitInput }
@@ -69,7 +69,7 @@ describe('planElicitationResponse', () => {
 
   it('should return revision message on request_revision decision', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(
-      mockElicitationResult.accept({ decision: 'request_revision' })
+      mockElicitationResult.accept({ decision: '📝 Request Changes' })
     );
     const mockServer = {
       server: { elicitInput: mockElicitInput }
@@ -83,7 +83,7 @@ describe('planElicitationResponse', () => {
   it('should include feedback in response when provided', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(
       mockElicitationResult.accept({ 
-        decision: 'approve',
+        decision: '✅ Approve Plan',
         feedback: 'Looks good but add more tests'
       })
     );

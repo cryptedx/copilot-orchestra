@@ -20,38 +20,63 @@ export const SERVER_CONFIG = {
 };
 
 /**
- * Request elicitation from the client using the built-in elicitInput method
+ * Request elicitation from the client — now timeout-safe for GitHub Copilot
  */
-export async function requestElicitation(server: McpServer, message: string, requestedSchema: any, progressToken?: string | number) {
+export async function requestElicitation(
+  server: McpServer,
+  message: string,
+  requestedSchema: any,
+  progressToken?: string | number
+) {
   let interval: NodeJS.Timeout | undefined;
 
-  if (progressToken) {
-    // Send initial progress immediately
-    server.server.sendProgress({
-      progressToken,
-      progress: 0,
-      total: 100,
-      message: "Waiting for user input..."
-    }).catch(err => console.error("Failed to send progress:", err));
+  // ==================== Send progress every 5–7 seconds ====================
+  const sendKeepAliveProgress = () => {
+    if (progressToken === undefined) return;
 
+    // Copilot only respects the official progress format via notifyProgress
+    server.notifyProgress({
+      token: progressToken,
+      value: {
+        kind: "begin",
+        title: "⏳ Waiting for your input …",
+        percentage: 0,
+      },
+    }).catch(() => {}); // Ignore errors — may occur with very old clients
+
+    // Repeat every 6 seconds (Copilot resets the timeout on each progress event)
     interval = setInterval(() => {
-      server.server.sendProgress({
-        progressToken,
-        progress: 0,
-        total: 100,
-        message: "Waiting for user input..."
-      }).catch(err => console.error("Failed to send progress:", err));
-    }, 5000);
+      server.notifyProgress({
+        token: progressToken,
+        value: {
+          kind: "report",
+          message: "⏳ Waiting for your decision in the Copilot window …",
+          percentage: 0,
+        },
+      }).catch(() => {});
+    }, 6000);
+  };
+
+  if (progressToken !== undefined) {
+    sendKeepAliveProgress();
   }
 
   try {
-    return await server.server.elicitInput({
+    const result = await server.server.elicitInput({
       message,
-      requestedSchema
-    }, { timeout: 300000 } as any); // Increase timeout to 5 minutes
+      requestedSchema,
+    });
+
+    return result;
   } finally {
-    if (interval) {
-      clearInterval(interval);
+    if (interval) clearInterval(interval);
+
+    // Send final progress (cleans up the UI)
+    if (progressToken !== undefined) {
+      server.notifyProgress({
+        token: progressToken,
+        value: { kind: "end" },
+      }).catch(() => {});
     }
   }
 }
@@ -62,22 +87,21 @@ export async function requestElicitation(server: McpServer, message: string, req
 export async function planElicitationResponse(server: McpServer, args: any, progressToken?: string | number) {
   const { planSummary, planFilePath, openQuestions = [] } = args;
 
-  let message = `## Implementation Plan Ready for Review\n\n`;
+  let message = `## 📋 Implementation Plan Ready for Review\n\n`;
   message += `**Summary:** ${planSummary}\n\n`;
-  message += `**Plan File:** ${planFilePath}\n\n`;
+  message += `**Plan File:** \`${planFilePath}\`\n\n`;
   if (openQuestions.length > 0) {
-    message += `### Open Questions:\n`;
+    message += `### ❓ Open Questions:\n`;
     message += openQuestions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n') + `\n\n`;
   }
-  message += `Please review the plan and provide your decision.`;
+  message += `👉 Please review the plan and provide your decision.`;
 
   const requestedSchema = {
     type: "object",
     properties: {
       decision: { 
         type: "string", 
-        enum: ["approve", "request_revision"],
-        enumNames: ["Approve", "Request Revision"],
+        enum: ["✅ Approve Plan", "📝 Request Changes"],
         title: "Decision",
         description: "Choose whether to approve the plan or request revisions"
       },
@@ -96,7 +120,7 @@ export async function planElicitationResponse(server: McpServer, args: any, prog
     // Process the result based on user action
     if (result.action === 'accept' && result.content) {
       const { decision, feedback } = result.content;
-      const responseText = decision === 'approve' 
+      const responseText = decision === '✅ Approve Plan' 
         ? `✅ Plan approved!${feedback ? ` Feedback: ${feedback}` : ''}`
         : `📝 Revisions requested${feedback ? `: ${feedback}` : ''}`;
       
@@ -141,19 +165,18 @@ export async function phaseElicitationResponse(server: McpServer, args: any, pro
     reviewStatus: string;
   };
 
-  let message = `## Phase ${phaseNumber} Complete: ${phaseTitle}\n\n${summary}\n\n`;
-  message += `**Files Changed:**\n${filesChanged.map((f) => `- ${f}`).join("\n")}\n\n`;
-  message += `**Review Status:** ${reviewStatus}\n\n`;
-  message += `**Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\n`;
-  message += `Please confirm to proceed.`;
+  let message = `## 🎉 Phase ${phaseNumber} Complete: ${phaseTitle}\n\n${summary}\n\n`;
+  message += `**📂 Files Changed:**\n${filesChanged.map((f) => `- \`${f}\``).join("\n")}\n\n`;
+  message += `**🔍 Review Status:** ${reviewStatus}\n\n`;
+  message += `**💬 Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\n`;
+  message += `👉 Please confirm to proceed.`;
 
   const requestedSchema = {
     type: "object",
     properties: {
       decision: {
-        type: "string",
-        enum: ["proceed", "request_revision", "abort"],
-        enumNames: ["Proceed", "Request Revision", "Abort"],
+        type: "string", 
+        enum: ["🚀 Proceed to Next Phase", "📝 Request Changes", "🛑 Abort Process"],
         title: "Decision",
         description: "Choose whether to proceed, request revisions, or abort"
       },
@@ -173,9 +196,9 @@ export async function phaseElicitationResponse(server: McpServer, args: any, pro
     if (result.action === 'accept' && result.content) {
       const { decision, feedback } = result.content;
       let responseText = '';
-      if (decision === 'proceed') {
+      if (decision === '🚀 Proceed to Next Phase') {
         responseText = `✅ Phase ${phaseNumber} approved!${feedback ? ` Feedback: ${feedback}` : ''}`;
-      } else if (decision === 'request_revision') {
+      } else if (decision === '📝 Request Changes') {
         responseText = `📝 Revisions requested for phase ${phaseNumber}${feedback ? `: ${feedback}` : ''}`;
       } else {
         responseText = `⛔ Phase ${phaseNumber} aborted${feedback ? `: ${feedback}` : ''}`;
@@ -208,12 +231,7 @@ export async function phaseElicitationResponse(server: McpServer, args: any, pro
 export function createPlanApprovalHandler(server: McpServer) {
   return async (args: any, extra: any) => {
     console.error(`[${new Date().toISOString()}] TRACE: request_plan_approval called`);
-    // Extract progress token from extra context if available
-    // The structure depends on the SDK, but typically it's in request.params.meta.progressToken
-    const progressToken = extra?.request?.params?.meta?.progressToken;
-    if (progressToken) {
-      console.error(`[${new Date().toISOString()}] TRACE: Found progress token: ${progressToken}`);
-    }
+    const progressToken = extra?.request?.params?.meta?.progressToken ?? undefined;
     return planElicitationResponse(server, args, progressToken);
   };
 }
@@ -224,11 +242,7 @@ export function createPlanApprovalHandler(server: McpServer) {
 export function createPhaseCommitHandler(server: McpServer) {
   return async (args: any, extra: any) => {
     console.error(`[${new Date().toISOString()}] TRACE: request_phase_commit called`);
-    // Extract progress token from extra context if available
-    const progressToken = extra?.request?.params?.meta?.progressToken;
-    if (progressToken) {
-      console.error(`[${new Date().toISOString()}] TRACE: Found progress token: ${progressToken}`);
-    }
+    const progressToken = extra?.request?.params?.meta?.progressToken ?? undefined;
     return phaseElicitationResponse(server, args, progressToken);
   };
 }
