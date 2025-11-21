@@ -123,9 +123,7 @@ describe('planElicitationResponse', () => {
       }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
-
-    expect(result.content[0].text).toBe('Plan review cancelled or declined');
+    await expect(planElicitationResponse(mockServer, mockPlanArgs, "test-token")).rejects.toThrow("Plan review cancelled, declined, or timed out. Workflow stopped.");
   });
 
   it('should handle cancel action', async () => {
@@ -137,9 +135,7 @@ describe('planElicitationResponse', () => {
       }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
-
-    expect(result.content[0].text).toBe('Plan review cancelled or declined');
+    await expect(planElicitationResponse(mockServer, mockPlanArgs, "test-token")).rejects.toThrow("Plan review cancelled, declined, or timed out. Workflow stopped.");
   });
 
   it('should handle errors and return error response', async () => {
@@ -151,7 +147,7 @@ describe('planElicitationResponse', () => {
       }
     } as unknown as McpServer;
 
-    await expect(planElicitationResponse(mockServer, mockPlanArgs, "test-token")).rejects.toThrow('Connection failed');
+    await expect(planElicitationResponse(mockServer, mockPlanArgs, "test-token")).rejects.toThrow('Elicitation failed: Connection failed');
   });
 
   it('should handle non-Error exceptions', async () => {
@@ -163,6 +159,6 @@ describe('planElicitationResponse', () => {
       }
     } as unknown as McpServer;
 
-    await expect(planElicitationResponse(mockServer, mockPlanArgs, "test-token")).rejects.toBe('String error');
+    await expect(planElicitationResponse(mockServer, mockPlanArgs, "test-token")).rejects.toThrow('Elicitation failed: String error');
   });
 });

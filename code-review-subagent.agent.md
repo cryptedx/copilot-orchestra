@@ -1,6 +1,6 @@
 ---
 description: "Review code changes from a completed implementation phase."
-tools: ["search", "usages", "problems", "changes"]
+tools: ["search", "search/usages", "search/problems", "search/changes"]
 model: Gemini 3 Pro (Preview) (copilot)
 ---
 

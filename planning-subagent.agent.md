@@ -4,12 +4,12 @@ argument-hint: Research goal or problem statement
 tools:
   [
     "search",
-    "usages",
-    "problems",
-    "changes",
-    "testFailure",
-    "fetch",
-    "githubRepo",
+    "search/usages",
+    "search/problems",
+    "search/changes",
+    "launch/testFailure",
+    "web/fetch",
+    "web/githubRepo",
   ]
 model: Gemini 3 Pro (Preview) (copilot)
 ---

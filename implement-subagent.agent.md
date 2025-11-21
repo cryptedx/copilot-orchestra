@@ -4,15 +4,17 @@ tools:
   [
     "edit",
     "search",
-    "runCommands",
-    "runTasks",
-    "usages",
-    "problems",
-    "changes",
-    "testFailure",
-    "fetch",
-    "githubRepo",
-    "todos",
+    "shell",
+    "launch/createAndRunTask",
+    "launch/getTaskOutput",
+    "launch/runTask",
+    "search/usages",
+    "search/problems",
+    "search/changes",
+    "launch/testFailure",
+    "web/fetch",
+    "web/githubRepo",
+    "todo",
   ]
 model: Gemini 3 Pro (Preview) (copilot)
 ---

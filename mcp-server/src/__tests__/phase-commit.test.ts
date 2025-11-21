@@ -156,9 +156,7 @@ describe('phaseElicitationResponse', () => {
       }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
-
-    expect(result.content[0].text).toBe(`Phase ${mockPhaseArgs.phaseNumber} review cancelled or declined`);
+    await expect(phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token")).rejects.toThrow(`Phase ${mockPhaseArgs.phaseNumber} review cancelled, declined, or timed out. Workflow stopped.`);
   });
 
   it('should handle cancel action', async () => {
@@ -170,9 +168,7 @@ describe('phaseElicitationResponse', () => {
       }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
-
-    expect(result.content[0].text).toBe(`Phase ${mockPhaseArgs.phaseNumber} review cancelled or declined`);
+    await expect(phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token")).rejects.toThrow(`Phase ${mockPhaseArgs.phaseNumber} review cancelled, declined, or timed out. Workflow stopped.`);
   });
 
   it('should handle errors and return error response', async () => {
@@ -184,7 +180,7 @@ describe('phaseElicitationResponse', () => {
       }
     } as unknown as McpServer;
 
-    await expect(phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token")).rejects.toThrow('Server timeout');
+    await expect(phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token")).rejects.toThrow('Elicitation failed: Server timeout');
   });
 
   it('should handle multiple files changed', async () => {

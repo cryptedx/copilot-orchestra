@@ -2,18 +2,20 @@
 description: "Orchestrates Planning, Implementation, and Review cycle for complex tasks"
 tools:
   [
-    "runCommands",
-    "runTasks",
+    "shell",
+    "launch/createAndRunTask",
+    "launch/getTaskOutput",
+    "launch/runTask",
     "edit",
     "search",
-    "todos",
-    "runSubagent",
-    "usages",
-    "problems",
-    "changes",
-    "testFailure",
-    "fetch",
-    "githubRepo",
+    "todo",
+    "agents/runSubagent",
+    "search/usages",
+    "search/problems",
+    "search/changes",
+    "launch/testFailure",
+    "web/fetch",
+    "web/githubRepo",
     "copilot-orchestra-mcp/*",
   ]
 model: Gemini 3 Pro (Preview) (copilot)
@@ -135,7 +137,7 @@ For each phase in the plan, execute this cycle:
 2. **Write Phase Completion File**: Create `plans/<task-name>-phase-<N>-complete.md` following <phase_complete_style_guide>.
 
 3. **Handle User Decision**:
-   - If **proceed**: Continue to step 2D
+   - If **proceed**: Run the git commit command using the proposed message, then continue to step 2D
    - If **request_revision**: Return to 2A with the user's feedback
    - If **abort**: Stop workflow and await further instructions
 
