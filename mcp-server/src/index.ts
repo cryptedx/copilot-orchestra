@@ -5,6 +5,7 @@
  *
  * This MCP server provides interactive elicitation tools for the Copilot Orchestra workflow.
  * It enables MCP elicitation via native UI prompts at critical pause points without breaking the conversation flow.
+ * Fully timeout-safe for GitHub Copilot in VS Code (November 2025) – works even when Copilot doesn't send a progressToken.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -20,46 +21,47 @@ export const SERVER_CONFIG = {
 };
 
 /**
- * Request elicitation from the client — now timeout-safe for GitHub Copilot
+ * Elicitation result type
+ */
+export type ElicitationResult = { action: 'accept' | 'decline' | 'cancel'; content?: any } | undefined;
+
+/**
+ * Request elicitation – completely timeout-safe for GitHub Copilot
  */
 export async function requestElicitation(
   server: McpServer,
   message: string,
   requestedSchema: any,
-  progressToken?: string | number
-) {
+  progressToken: string | number   // always provided by handler now
+): Promise<ElicitationResult> {
   let interval: NodeJS.Timeout | undefined;
 
-  // ==================== Send progress every 5–7 seconds ====================
-  const sendKeepAliveProgress = () => {
-    if (progressToken === undefined) return;
-
-    // Copilot only respects the official progress format via notifyProgress
-    server.notifyProgress({
-      token: progressToken,
-      value: {
-        kind: "begin",
-        title: "⏳ Waiting for your input …",
-        percentage: 0,
+  // Start keep-alive progress reports every 5 seconds
+  const startKeepAlive = () => {
+    // Initial begin (already sent by handler, but safe to send again)
+    server.server.notification({
+      method: "notifications/progress",
+      params: {
+        progressToken,
+        progress: 0,
+        message: "⏳ Waiting for your input…",
       },
-    }).catch(() => {}); // Ignore errors — may occur with very old clients
+    }).catch(() => {});
 
-    // Repeat every 6 seconds (Copilot resets the timeout on each progress event)
+    // Repeat every 5 seconds – Copilot resets timeout on every report
     interval = setInterval(() => {
-      server.notifyProgress({
-        token: progressToken,
-        value: {
-          kind: "report",
-          message: "⏳ Waiting for your decision in the Copilot window …",
-          percentage: 0,
+      server.server.notification({
+        method: "notifications/progress",
+        params: {
+          progressToken,
+          progress: 0,
+          message: "⏳ Still waiting for your decision… (you can take as long as you want)",
         },
       }).catch(() => {});
-    }, 6000);
+    }, 5000);
   };
 
-  if (progressToken !== undefined) {
-    sendKeepAliveProgress();
-  }
+  startKeepAlive();
 
   try {
     const result = await server.server.elicitInput({
@@ -67,29 +69,31 @@ export async function requestElicitation(
       requestedSchema,
     });
 
-    return result;
+    return result as ElicitationResult;
   } finally {
     if (interval) clearInterval(interval);
 
-    // Send final progress (cleans up the UI)
-    if (progressToken !== undefined) {
-      server.notifyProgress({
-        token: progressToken,
-        value: { kind: "end" },
-      }).catch(() => {});
-    }
+    // Always end the progress task cleanly
+    server.server.notification({
+      method: "notifications/progress",
+      params: {
+        progressToken,
+        progress: 100,
+        message: "Completed",
+      },
+    }).catch(() => {});
   }
 }
 
 /**
  * Request plan approval via elicitation
  */
-export async function planElicitationResponse(server: McpServer, args: any, progressToken?: string | number) {
+export async function planElicitationResponse(server: McpServer, args: any, progressToken: string | number) {
   const { planSummary, planFilePath, openQuestions = [] } = args;
 
   let message = `## 📋 Implementation Plan Ready for Review\n\n`;
   message += `**Summary:** ${planSummary}\n\n`;
-  message += `**Plan File:** \`${planFilePath}\`\n\n`;
+  message += `**Plan File:** \`${planFilePath}\`\}\n\n`;
   if (openQuestions.length > 0) {
     message += `### ❓ Open Questions:\n`;
     message += openQuestions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n') + `\n\n`;
@@ -114,59 +118,28 @@ export async function planElicitationResponse(server: McpServer, args: any, prog
     required: ["decision"],
   };
 
-  try {
-    const result = await requestElicitation(server, message, requestedSchema, progressToken);
+  const result = await requestElicitation(server, message, requestedSchema, progressToken);
+  
+  if (result && result.action === 'accept' && result.content) {
+    const { decision, feedback } = result.content;
+    const responseText = decision === '✅ Approve Plan' 
+      ? `✅ Plan approved!${feedback ? ` Feedback: ${feedback}` : ''}`
+      : `📝 Revisions requested${feedback ? `: ${feedback}` : ''}`;
     
-    // Process the result based on user action
-    if (result.action === 'accept' && result.content) {
-      const { decision, feedback } = result.content;
-      const responseText = decision === '✅ Approve Plan' 
-        ? `✅ Plan approved!${feedback ? ` Feedback: ${feedback}` : ''}`
-        : `📝 Revisions requested${feedback ? `: ${feedback}` : ''}`;
-      
-      return {
-        content: [{ type: "text" as const, text: responseText }]
-      };
-    } else if (result.action === 'decline') {
-      return {
-        content: [{ type: "text" as const, text: "Plan review declined" }]
-      };
-    } else {
-      return {
-        content: [{ type: "text" as const, text: "Plan review cancelled" }]
-      };
-    }
-  } catch (err) {
-    console.error(`[${new Date().toISOString()}] ERROR: elicitation failed:`, err);
-    return {
-      content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
-      isError: true
-    };
+    return { content: [{ type: "text" as const, text: responseText }] };
   }
+  
+  return { content: [{ type: "text" as const, text: "Plan review cancelled or declined" }] };
 }
 
 /**
  * Request phase commit confirmation via elicitation
  */
-export async function phaseElicitationResponse(server: McpServer, args: any, progressToken?: string | number) {
-  const {
-    phaseNumber,
-    phaseTitle,
-    summary,
-    filesChanged,
-    commitMessage,
-    reviewStatus,
-  } = args as {
-    phaseNumber: number;
-    phaseTitle: string;
-    summary: string;
-    filesChanged: string[];
-    commitMessage: string;
-    reviewStatus: string;
-  };
+export async function phaseElicitationResponse(server: McpServer, args: any, progressToken: string | number) {
+  const { phaseNumber, phaseTitle, summary, filesChanged, commitMessage, reviewStatus } = args;
 
   let message = `## 🎉 Phase ${phaseNumber} Complete: ${phaseTitle}\n\n${summary}\n\n`;
-  message += `**📂 Files Changed:**\n${filesChanged.map((f) => `- \`${f}\``).join("\n")}\n\n`;
+  message += `**📂 Files Changed:**\n${filesChanged.map((f: string) => `- \`${f}\``).join("\n")}\n\n`;
   message += `**🔍 Review Status:** ${reviewStatus}\n\n`;
   message += `**💬 Proposed Commit Message:**\n\n\`\`\`\n${commitMessage}\n\`\`\`\n\n`;
   message += `👉 Please confirm to proceed.`;
@@ -189,61 +162,80 @@ export async function phaseElicitationResponse(server: McpServer, args: any, pro
     required: ["decision"],
   };
 
-  try {
-    const result = await requestElicitation(server, message, requestedSchema, progressToken);
-    
-    // Process the result based on user action
-    if (result.action === 'accept' && result.content) {
-      const { decision, feedback } = result.content;
-      let responseText = '';
-      if (decision === '🚀 Proceed to Next Phase') {
-        responseText = `✅ Phase ${phaseNumber} approved!${feedback ? ` Feedback: ${feedback}` : ''}`;
-      } else if (decision === '📝 Request Changes') {
-        responseText = `📝 Revisions requested for phase ${phaseNumber}${feedback ? `: ${feedback}` : ''}`;
-      } else {
-        responseText = `⛔ Phase ${phaseNumber} aborted${feedback ? `: ${feedback}` : ''}`;
-      }
-      
-      return {
-        content: [{ type: "text" as const, text: responseText }]
-      };
-    } else if (result.action === 'decline') {
-      return {
-        content: [{ type: "text" as const, text: `Phase ${phaseNumber} review declined` }]
-      };
+  const result = await requestElicitation(server, message, requestedSchema, progressToken);
+
+  if (result && result.action === 'accept' && result.content) {
+    const { decision, feedback } = result.content;
+    if (decision === '🚀 Proceed to Next Phase') {
+      return { content: [{ type: "text" as const, text: `✅ Phase ${phaseNumber} approved!${feedback ? ` Feedback: ${feedback}` : ''}` }] };
+    } else if (decision === '📝 Request Changes') {
+      return { content: [{ type: "text" as const, text: `📝 Revisions requested for phase ${phaseNumber}${feedback ? `: ${feedback}` : ''}` }] };
     } else {
-      return {
-        content: [{ type: "text" as const, text: `Phase ${phaseNumber} review cancelled` }]
-      };
+      return { content: [{ type: "text" as const, text: `⛔ Process aborted${feedback ? ` – ${feedback}` : ''}` }] };
     }
-  } catch (err) {
-    console.error(`[${new Date().toISOString()}] ERROR: elicitation failed:`, err);
-    return {
-      content: [{ type: "text" as const, text: `Error: ${err instanceof Error ? err.message : String(err)}` }],
-      isError: true
-    };
   }
+
+  return { content: [{ type: "text" as const, text: `Phase ${phaseNumber} review cancelled or declined` }] };
 }
 
 /**
- * Tool handler for request_plan_approval
+ * Tool handlers – create unique progressToken if Copilot doesn't provide one
  */
 export function createPlanApprovalHandler(server: McpServer) {
   return async (args: any, extra: any) => {
-    console.error(`[${new Date().toISOString()}] TRACE: request_plan_approval called`);
-    const progressToken = extra?.request?.params?.meta?.progressToken ?? undefined;
-    return planElicitationResponse(server, args, progressToken);
+    // Copilot often doesn't send progressToken → create our own reliable one
+    const progressToken = extra?.request?.params?.meta?.progressToken 
+      ?? `orchestra-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Start progress immediately so Copilot never times out
+    server.server.notification({
+      method: "notifications/progress",
+      params: {
+        progressToken,
+        progress: 0,
+        message: "Waiting for plan approval…",
+      },
+    }).catch(() => {});
+
+    const result = await planElicitationResponse(server, args, progressToken);
+
+    server.server.notification({
+      method: "notifications/progress",
+      params: {
+        progressToken,
+        progress: 100,
+      },
+    }).catch(() => {});
+
+    return result;
   };
 }
 
-/**
- * Tool handler for request_phase_commit
- */
 export function createPhaseCommitHandler(server: McpServer) {
   return async (args: any, extra: any) => {
-    console.error(`[${new Date().toISOString()}] TRACE: request_phase_commit called`);
-    const progressToken = extra?.request?.params?.meta?.progressToken ?? undefined;
-    return phaseElicitationResponse(server, args, progressToken);
+    const progressToken = extra?.request?.params?.meta?.progressToken 
+      ?? `orchestra-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    server.server.notification({
+      method: "notifications/progress",
+      params: {
+        progressToken,
+        progress: 0,
+        message: "Waiting for phase confirmation…",
+      },
+    }).catch(() => {});
+
+    const result = await phaseElicitationResponse(server, args, progressToken);
+
+    server.server.notification({
+      method: "notifications/progress",
+      params: {
+        progressToken,
+        progress: 100,
+      },
+    }).catch(() => {});
+
+    return result;
   };
 }
 
@@ -255,44 +247,36 @@ export function createServer() {
     SERVER_CONFIG,
     {
       capabilities: {
-        tools: {
-          listChanged: true,
-        },
+        tools: { listChanged: true },
         elicitation: {},
       },
     }
   );
 
-  /**
-   * Register request_plan_approval tool
-   */
   mcpServer.registerTool(
     "request_plan_approval",
     {
-      description: "Request user approval for the implementation plan. Uses elicitation to get user feedback via the MCP elicitation UI (native prompt).",
+      description: "Request user approval for the implementation plan via native MCP elicitation UI.",
       inputSchema: {
-        planSummary: z.string().describe("Brief summary of the implementation plan"),
-        planFilePath: z.string().describe("Path to the plan file"),
-        openQuestions: z.array(z.string()).optional().describe("List of open questions to be addressed")
+        planSummary: z.string(),
+        planFilePath: z.string(),
+        openQuestions: z.array(z.string()).optional(),
       }
     },
     createPlanApprovalHandler(mcpServer)
   );
 
-  /**
-   * Register request_phase_commit tool
-   */
   mcpServer.registerTool(
     "request_phase_commit",
     {
-      description: "Request user confirmation to commit the completed phase. Uses elicitation to get user feedback via the MCP elicitation UI (native prompt).",
+      description: "Request user confirmation to commit the completed phase via native MCP elicitation UI.",
       inputSchema: {
-        phaseNumber: z.number().describe("The phase number"),
-        phaseTitle: z.string().describe("Title of the phase"),
-        summary: z.string().describe("Summary of what was accomplished"),
-        filesChanged: z.array(z.string()).describe("List of files that were changed"),
-        commitMessage: z.string().describe("Proposed commit message"),
-        reviewStatus: z.string().describe("Review status (e.g., APPROVED, NEEDS_REVISION)")
+        phaseNumber: z.number(),
+        phaseTitle: z.string(),
+        summary: z.string(),
+        filesChanged: z.array(z.string()),
+        commitMessage: z.string(),
+        reviewStatus: z.string(),
       }
     },
     createPhaseCommitHandler(mcpServer)
@@ -308,13 +292,12 @@ export async function main() {
   const mcpServer = createServer();
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
-  console.error("Copilot Orchestra MCP server running on stdio");
+  console.error("Copilot Orchestra MCP server running – timeout-proof version active");
 }
 
-// Run main if this is the entry point
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    console.error("Fatal error in main():", error);
+  main().catch(err => {
+    console.error("Fatal error:", err);
     process.exit(1);
   });
 }

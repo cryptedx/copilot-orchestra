@@ -7,14 +7,15 @@ describe('requestElicitation', () => {
     const mockElicitInput = vi.fn().mockResolvedValue({ action: 'accept', content: {} });
     const mockServer = {
       server: {
-        elicitInput: mockElicitInput
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
       }
     } as unknown as McpServer;
 
     const message = 'Test message';
     const schema = { type: 'object', properties: {} };
 
-    await requestElicitation(mockServer, message, schema);
+    await requestElicitation(mockServer, message, schema, 'test-token');
 
     expect(mockElicitInput).toHaveBeenCalledWith({
       message,
@@ -26,7 +27,8 @@ describe('requestElicitation', () => {
     const mockElicitInput = vi.fn().mockResolvedValue({ action: 'accept', content: {} });
     const mockServer = {
       server: {
-        elicitInput: mockElicitInput
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
       }
     } as unknown as McpServer;
 
@@ -38,7 +40,7 @@ describe('requestElicitation', () => {
       }
     };
 
-    await requestElicitation(mockServer, message, schema);
+    await requestElicitation(mockServer, message, schema, 'test-token');
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     expect(callArgs.message).toBe(message);
@@ -50,11 +52,12 @@ describe('requestElicitation', () => {
     const mockElicitInput = vi.fn().mockResolvedValue(expectedResult);
     const mockServer = {
       server: {
-        elicitInput: mockElicitInput
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
       }
     } as unknown as McpServer;
 
-    const result = await requestElicitation(mockServer, 'test', {});
+    const result = await requestElicitation(mockServer, 'test', {}, 'test-token');
 
     expect(result).toEqual(expectedResult);
   });
@@ -64,12 +67,13 @@ describe('requestElicitation', () => {
     const mockElicitInput = vi.fn().mockRejectedValue(error);
     const mockServer = {
       server: {
-        elicitInput: mockElicitInput
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
       }
     } as unknown as McpServer;
 
     await expect(
-      requestElicitation(mockServer, 'test', {})
+      requestElicitation(mockServer, 'test', {}, 'test-token')
     ).rejects.toThrow('Network error');
   });
 
@@ -83,7 +87,7 @@ describe('requestElicitation', () => {
     });
 
     it('should send progress updates when progressToken is provided', async () => {
-      const mockNotifyProgress = vi.fn().mockResolvedValue(undefined);
+      const mockNotification = vi.fn().mockResolvedValue(undefined);
       const mockElicitInput = vi.fn().mockImplementation(async () => {
         // Simulate delay
         await new Promise(resolve => setTimeout(resolve, 10000));
@@ -91,9 +95,9 @@ describe('requestElicitation', () => {
       });
 
       const mockServer = {
-        notifyProgress: mockNotifyProgress,
         server: {
-          elicitInput: mockElicitInput
+          elicitInput: mockElicitInput,
+          notification: mockNotification
         }
       } as unknown as McpServer;
 
@@ -108,12 +112,12 @@ describe('requestElicitation', () => {
       await vi.advanceTimersByTimeAsync(6000); // 6 seconds
 
       // Check if progress was sent
-      expect(mockNotifyProgress).toHaveBeenCalledWith({
-        token: progressToken,
-        value: {
-          kind: "report",
-          message: "⏳ Waiting for your decision in the Copilot window …",
-          percentage: 0,
+      expect(mockNotification).toHaveBeenCalledWith({
+        method: "notifications/progress",
+        params: {
+          progressToken,
+          progress: 0,
+          message: "⏳ Still waiting for your decision… (you can take as long as you want)",
         },
       });
 
@@ -123,22 +127,6 @@ describe('requestElicitation', () => {
       // Finish the request
       await vi.runAllTimersAsync();
       await promise;
-    });
-
-    it('should not send progress updates when progressToken is missing', async () => {
-      const mockNotifyProgress = vi.fn();
-      const mockElicitInput = vi.fn().mockResolvedValue({ action: 'accept', content: {} });
-
-      const mockServer = {
-        notifyProgress: mockNotifyProgress,
-        server: {
-          elicitInput: mockElicitInput
-        }
-      } as unknown as McpServer;
-
-      await requestElicitation(mockServer, 'test', {});
-
-      expect(mockNotifyProgress).not.toHaveBeenCalled();
     });
   });
 });

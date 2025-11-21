@@ -13,15 +13,15 @@ describe('Tool Handler Factories', () => {
     });
     
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
     const handler = createPlanApprovalHandler(mockServer);
     const result = await handler(mockPlanArgs, {});
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('TRACE: request_plan_approval called')
-    );
     expect(result.content[0].text).toContain('✅ Plan approved!');
     
     consoleErrorSpy.mockRestore();
@@ -36,15 +36,15 @@ describe('Tool Handler Factories', () => {
     });
     
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
     const handler = createPhaseCommitHandler(mockServer);
     const result = await handler(mockPhaseArgs, {});
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('TRACE: request_phase_commit called')
-    );
     expect(result.content[0].text).toContain('✅ Phase 1 approved!');
     
     consoleErrorSpy.mockRestore();
@@ -56,14 +56,15 @@ describe('Tool Handler Factories', () => {
     const mockElicitInput = vi.fn().mockRejectedValue(new Error('Handler error'));
     
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
     const handler = createPlanApprovalHandler(mockServer);
-    const result = await handler(mockPlanArgs, {});
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Error: Handler error');
+    
+    await expect(handler(mockPlanArgs, {})).rejects.toThrow('Handler error');
     
     consoleErrorSpy.mockRestore();
   });

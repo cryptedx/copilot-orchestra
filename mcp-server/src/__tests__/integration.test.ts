@@ -12,7 +12,10 @@ describe('Integration Tests', () => {
         });
 
       const mockServer = {
-        server: { elicitInput: mockElicitInput }
+        server: {
+          elicitInput: mockElicitInput,
+          notification: vi.fn().mockResolvedValue(undefined)
+        }
       } as unknown as McpServer;
 
       const args = {
@@ -21,7 +24,7 @@ describe('Integration Tests', () => {
         openQuestions: ['Question 1?']
       };
 
-      const result = await planElicitationResponse(mockServer, args);
+      const result = await planElicitationResponse(mockServer, args, 'test-token');
 
       expect(result.content[0].text).toContain('✅ Plan approved!');
       expect(result.content[0].text).toContain('Feedback: Looks good!');
@@ -36,7 +39,10 @@ describe('Integration Tests', () => {
         });
 
       const mockServer = {
-        server: { elicitInput: mockElicitInput }
+        server: {
+          elicitInput: mockElicitInput,
+          notification: vi.fn().mockResolvedValue(undefined)
+        }
       } as unknown as McpServer;
 
       const args = {
@@ -45,7 +51,7 @@ describe('Integration Tests', () => {
         openQuestions: []
       };
 
-      const result = await planElicitationResponse(mockServer, args);
+      const result = await planElicitationResponse(mockServer, args, 'test-token');
 
       expect(result.content[0].text).toContain('📝 Revisions requested');
       expect(result.content[0].text).toContain(': Add more detail');
@@ -61,7 +67,10 @@ describe('Integration Tests', () => {
         });
 
       const mockServer = {
-        server: { elicitInput: mockElicitInput }
+        server: {
+          elicitInput: mockElicitInput,
+          notification: vi.fn().mockResolvedValue(undefined)
+        }
       } as unknown as McpServer;
 
       const args = {
@@ -73,7 +82,7 @@ describe('Integration Tests', () => {
         reviewStatus: 'APPROVED'
       };
 
-      const result = await phaseElicitationResponse(mockServer, args);
+      const result = await phaseElicitationResponse(mockServer, args, 'test-token');
 
       expect(result.content[0].text).toContain('✅ Phase 2 approved!');
       expect(mockElicitInput).toHaveBeenCalledTimes(1);
@@ -87,7 +96,10 @@ describe('Integration Tests', () => {
         });
 
       const mockServer = {
-        server: { elicitInput: mockElicitInput }
+        server: {
+          elicitInput: mockElicitInput,
+          notification: vi.fn().mockResolvedValue(undefined)
+        }
       } as unknown as McpServer;
 
       const args = {
@@ -99,9 +111,9 @@ describe('Integration Tests', () => {
         reviewStatus: 'NEEDS_REVISION'
       };
 
-      const result = await phaseElicitationResponse(mockServer, args);
+      const result = await phaseElicitationResponse(mockServer, args, 'test-token');
 
-      expect(result.content[0].text).toContain('⛔ Phase 3 aborted');
+      expect(result.content[0].text).toContain('⛔ Process aborted');
       expect(result.content[0].text).toContain('Critical issue found');
     });
   });
@@ -124,7 +136,10 @@ describe('Integration Tests', () => {
         .mockRejectedValueOnce(new Error('Error 3'));
 
       const mockServer = {
-        server: { elicitInput: mockElicitInput }
+        server: {
+          elicitInput: mockElicitInput,
+          notification: vi.fn().mockResolvedValue(undefined)
+        }
       } as unknown as McpServer;
 
       const args = {
@@ -133,13 +148,9 @@ describe('Integration Tests', () => {
         openQuestions: []
       };
 
-      const result1 = await planElicitationResponse(mockServer, args);
-      const result2 = await planElicitationResponse(mockServer, args);
-      const result3 = await planElicitationResponse(mockServer, args);
-
-      expect(result1.isError).toBe(true);
-      expect(result2.isError).toBe(true);
-      expect(result3.isError).toBe(true);
+      await expect(planElicitationResponse(mockServer, args, 'test-token')).rejects.toThrow('Error 1');
+      await expect(planElicitationResponse(mockServer, args, 'test-token')).rejects.toThrow('Error 2');
+      await expect(planElicitationResponse(mockServer, args, 'test-token')).rejects.toThrow('Error 3');
       expect(mockElicitInput).toHaveBeenCalledTimes(3);
     });
 
@@ -152,7 +163,10 @@ describe('Integration Tests', () => {
         });
 
       const mockServer = {
-        server: { elicitInput: mockElicitInput }
+        server: {
+          elicitInput: mockElicitInput,
+          notification: vi.fn().mockResolvedValue(undefined)
+        }
       } as unknown as McpServer;
 
       const args = {
@@ -161,11 +175,9 @@ describe('Integration Tests', () => {
         openQuestions: []
       };
 
-      const result1 = await planElicitationResponse(mockServer, args);
-      expect(result1.isError).toBe(true);
+      await expect(planElicitationResponse(mockServer, args, 'test-token')).rejects.toThrow('Temporary failure');
 
-      const result2 = await planElicitationResponse(mockServer, args);
-      expect(result2.isError).toBeUndefined();
+      const result2 = await planElicitationResponse(mockServer, args, 'test-token');
       expect(result2.content[0].text).toContain('✅ Plan approved!');
     });
   });
@@ -179,7 +191,10 @@ describe('Integration Tests', () => {
       });
 
       const mockServer = {
-        server: { elicitInput: mockElicitInput }
+        server: {
+          elicitInput: mockElicitInput,
+          notification: vi.fn().mockResolvedValue(undefined)
+        }
       } as unknown as McpServer;
 
       const args = {
@@ -188,7 +203,7 @@ describe('Integration Tests', () => {
         openQuestions: []
       };
 
-      const result = await planElicitationResponse(mockServer, args);
+      const result = await planElicitationResponse(mockServer, args, 'test-token');
 
       expect(result.content[0].text).toContain('✅ Plan approved!');
       const callArgs = mockElicitInput.mock.calls[0][0];
@@ -203,7 +218,10 @@ describe('Integration Tests', () => {
       });
 
       const mockServer = {
-        server: { elicitInput: mockElicitInput }
+        server: {
+          elicitInput: mockElicitInput,
+          notification: vi.fn().mockResolvedValue(undefined)
+        }
       } as unknown as McpServer;
 
       const args = {
@@ -215,7 +233,7 @@ describe('Integration Tests', () => {
         reviewStatus: 'APPROVED'
       };
 
-      const result = await phaseElicitationResponse(mockServer, args);
+      const result = await phaseElicitationResponse(mockServer, args, 'test-token');
 
       expect(result.content[0].text).toContain('✅ Phase 1 approved!');
     });

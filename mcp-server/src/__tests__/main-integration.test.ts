@@ -30,7 +30,7 @@ describe('main function integration', () => {
     await main();
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Copilot Orchestra MCP server running on stdio'
+      'Copilot Orchestra MCP server running – timeout-proof version active'
     );
   });
 
@@ -38,7 +38,7 @@ describe('main function integration', () => {
     await main();
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Copilot Orchestra MCP server running on stdio')
+      expect.stringContaining('Copilot Orchestra MCP server running – timeout-proof version active')
     );
   });
 });

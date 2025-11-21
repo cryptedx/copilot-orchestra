@@ -34,7 +34,7 @@ server.stdout.on('data', (data) => {
                         result: {
                             action: 'accept',
                             content: {
-                                decision: 'approve',
+                                decision: '✅ Approve Plan',
                                 feedback: 'Looks good! Proceed with the plan.'
                             }
                         }

@@ -7,10 +7,13 @@ describe('phaseElicitationResponse', () => {
   it('should format message with all phase details', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'proceed' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     const message = callArgs.message;
@@ -24,10 +27,13 @@ describe('phaseElicitationResponse', () => {
   it('should list all changed files correctly', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'proceed' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     const message = callArgs.message;
@@ -40,10 +46,13 @@ describe('phaseElicitationResponse', () => {
   it('should include review status and commit message', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'proceed' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     const message = callArgs.message;
@@ -55,10 +64,13 @@ describe('phaseElicitationResponse', () => {
   it('should create correct schema with proceed/request_revision/abort options', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'proceed' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     const schema = callArgs.requestedSchema;
@@ -73,10 +85,13 @@ describe('phaseElicitationResponse', () => {
       mockElicitationResult.accept({ decision: '🚀 Proceed to Next Phase' })
     );
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
     expect(result.content[0].text).toContain(`✅ Phase ${mockPhaseArgs.phaseNumber} approved!`);
   });
@@ -86,10 +101,13 @@ describe('phaseElicitationResponse', () => {
       mockElicitationResult.accept({ decision: '📝 Request Changes' })
     );
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
     expect(result.content[0].text).toContain(`📝 Revisions requested for phase ${mockPhaseArgs.phaseNumber}`);
   });
@@ -99,12 +117,15 @@ describe('phaseElicitationResponse', () => {
       mockElicitationResult.accept({ decision: '🛑 Abort Process' })
     );
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
-    expect(result.content[0].text).toContain(`⛔ Phase ${mockPhaseArgs.phaseNumber} aborted`);
+    expect(result.content[0].text).toContain(`⛔ Process aborted`);
   });
 
   it('should include feedback in response when provided', async () => {
@@ -115,10 +136,13 @@ describe('phaseElicitationResponse', () => {
       })
     );
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
     expect(result.content[0].text).toContain('Feedback: Great work!');
   });
@@ -126,35 +150,41 @@ describe('phaseElicitationResponse', () => {
   it('should handle decline action', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.decline());
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
-    expect(result.content[0].text).toBe(`Phase ${mockPhaseArgs.phaseNumber} review declined`);
+    expect(result.content[0].text).toBe(`Phase ${mockPhaseArgs.phaseNumber} review cancelled or declined`);
   });
 
   it('should handle cancel action', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.cancel());
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs);
+    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token");
 
-    expect(result.content[0].text).toBe(`Phase ${mockPhaseArgs.phaseNumber} review cancelled`);
+    expect(result.content[0].text).toBe(`Phase ${mockPhaseArgs.phaseNumber} review cancelled or declined`);
   });
 
   it('should handle errors and return error response', async () => {
     const mockElicitInput = vi.fn().mockRejectedValue(new Error('Server timeout'));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, mockPhaseArgs);
-
-    expect(result.content[0].text).toContain('Error: Server timeout');
-    expect(result.isError).toBe(true);
+    await expect(phaseElicitationResponse(mockServer, mockPhaseArgs, "test-token")).rejects.toThrow('Server timeout');
   });
 
   it('should handle multiple files changed', async () => {
@@ -171,10 +201,13 @@ describe('phaseElicitationResponse', () => {
 
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'proceed' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    await phaseElicitationResponse(mockServer, argsWithManyFiles);
+    await phaseElicitationResponse(mockServer, argsWithManyFiles, "test-token");
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     const message = callArgs.message;
@@ -192,10 +225,13 @@ describe('phaseElicitationResponse', () => {
 
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: '🚀 Proceed to Next Phase' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await phaseElicitationResponse(mockServer, argsWithNoFiles);
+    const result = await phaseElicitationResponse(mockServer, argsWithNoFiles, "test-token");
 
     expect(result.content[0].text).toContain('approved');
   });

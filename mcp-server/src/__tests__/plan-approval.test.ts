@@ -7,10 +7,13 @@ describe('planElicitationResponse', () => {
   it('should format message correctly with all parameters', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'approve' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    await planElicitationResponse(mockServer, mockPlanArgs);
+    await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     const message = callArgs.message;
@@ -26,10 +29,13 @@ describe('planElicitationResponse', () => {
   it('should handle plan with no open questions', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'approve' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    await planElicitationResponse(mockServer, mockPlanArgsNoQuestions);
+    await planElicitationResponse(mockServer, mockPlanArgsNoQuestions, "test-token");
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     const message = callArgs.message;
@@ -41,10 +47,13 @@ describe('planElicitationResponse', () => {
   it('should create correct schema with approve/request_revision options', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.accept({ decision: 'approve' }));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    await planElicitationResponse(mockServer, mockPlanArgs);
+    await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
 
     const callArgs = mockElicitInput.mock.calls[0][0];
     const schema = callArgs.requestedSchema;
@@ -59,10 +68,13 @@ describe('planElicitationResponse', () => {
       mockElicitationResult.accept({ decision: '✅ Approve Plan' })
     );
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs);
+    const result = await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
 
     expect(result.content[0].text).toContain('✅ Plan approved!');
   });
@@ -72,10 +84,13 @@ describe('planElicitationResponse', () => {
       mockElicitationResult.accept({ decision: '📝 Request Changes' })
     );
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs);
+    const result = await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
 
     expect(result.content[0].text).toContain('📝 Revisions requested');
   });
@@ -88,10 +103,13 @@ describe('planElicitationResponse', () => {
       })
     );
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs);
+    const result = await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
 
     expect(result.content[0].text).toContain('Feedback: Looks good but add more tests');
   });
@@ -99,46 +117,52 @@ describe('planElicitationResponse', () => {
   it('should handle decline action', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.decline());
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs);
+    const result = await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
 
-    expect(result.content[0].text).toBe('Plan review declined');
+    expect(result.content[0].text).toBe('Plan review cancelled or declined');
   });
 
   it('should handle cancel action', async () => {
     const mockElicitInput = vi.fn().mockResolvedValue(mockElicitationResult.cancel());
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs);
+    const result = await planElicitationResponse(mockServer, mockPlanArgs, "test-token");
 
-    expect(result.content[0].text).toBe('Plan review cancelled');
+    expect(result.content[0].text).toBe('Plan review cancelled or declined');
   });
 
   it('should handle errors and return error response', async () => {
     const mockElicitInput = vi.fn().mockRejectedValue(new Error('Connection failed'));
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs);
-
-    expect(result.content[0].text).toContain('Error: Connection failed');
-    expect(result.isError).toBe(true);
+    await expect(planElicitationResponse(mockServer, mockPlanArgs, "test-token")).rejects.toThrow('Connection failed');
   });
 
   it('should handle non-Error exceptions', async () => {
     const mockElicitInput = vi.fn().mockRejectedValue('String error');
     const mockServer = {
-      server: { elicitInput: mockElicitInput }
+      server: {
+        elicitInput: mockElicitInput,
+        notification: vi.fn().mockResolvedValue(undefined)
+      }
     } as unknown as McpServer;
 
-    const result = await planElicitationResponse(mockServer, mockPlanArgs);
-
-    expect(result.content[0].text).toContain('Error: String error');
-    expect(result.isError).toBe(true);
+    await expect(planElicitationResponse(mockServer, mockPlanArgs, "test-token")).rejects.toBe('String error');
   });
 });
