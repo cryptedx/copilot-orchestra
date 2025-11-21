@@ -48,7 +48,7 @@ export async function requestElicitation(
       },
     }).catch(() => {});
 
-    // Repeat every 5 seconds – Copilot resets timeout on every report
+    // Repeat every 3 seconds – Copilot resets timeout on every report
     interval = setInterval(() => {
       server.server.notification({
         method: "notifications/progress",
@@ -58,7 +58,7 @@ export async function requestElicitation(
           message: "⏳ Still waiting for your decision… (you can take as long as you want)",
         },
       }).catch(() => {});
-    }, 5000);
+    }, 3000);
   };
 
   startKeepAlive();
@@ -69,7 +69,14 @@ export async function requestElicitation(
       requestedSchema,
     });
 
+    if (!result) {
+      throw new Error("Elicitation failed or timed out - no result returned");
+    }
+
     return result as ElicitationResult;
+  } catch (error) {
+    // Ensure we don't silently swallow errors that might look like continuation
+    throw new Error(`Elicitation failed: ${error instanceof Error ? error.message : String(error)}`);
   } finally {
     if (interval) clearInterval(interval);
 
@@ -93,7 +100,7 @@ export async function planElicitationResponse(server: McpServer, args: any, prog
 
   let message = `## 📋 Implementation Plan Ready for Review\n\n`;
   message += `**Summary:** ${planSummary}\n\n`;
-  message += `**Plan File:** \`${planFilePath}\`\}\n\n`;
+  message += `**Plan File:** \`${planFilePath}\`\n\n`;
   if (openQuestions.length > 0) {
     message += `### ❓ Open Questions:\n`;
     message += openQuestions.map((q: string, i: number) => `${i + 1}. ${q}`).join('\n') + `\n\n`;
@@ -129,7 +136,7 @@ export async function planElicitationResponse(server: McpServer, args: any, prog
     return { content: [{ type: "text" as const, text: responseText }] };
   }
   
-  return { content: [{ type: "text" as const, text: "Plan review cancelled or declined" }] };
+  throw new Error("Plan review cancelled, declined, or timed out. Workflow stopped.");
 }
 
 /**
@@ -175,7 +182,7 @@ export async function phaseElicitationResponse(server: McpServer, args: any, pro
     }
   }
 
-  return { content: [{ type: "text" as const, text: `Phase ${phaseNumber} review cancelled or declined` }] };
+  throw new Error(`Phase ${phaseNumber} review cancelled, declined, or timed out. Workflow stopped.`);
 }
 
 /**
