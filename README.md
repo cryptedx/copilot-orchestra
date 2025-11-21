@@ -11,12 +11,12 @@ The system solves a critical challenge in AI-assisted development: maintaining c
 ## Key Features
 
 - **🎭 Multi-Agent Workflow** - Conductor agent orchestrates specialized Planning, Implementation, and Code Review subagents, each optimized for their specific role.
-- **✅ TDD Enforcement** - Strict Test Driven Development: writing failing tests, seeing them fail, writing minimal code to pass, and verifying success before proceeding.
+- **✅ TDD Enforcement** - Strict Test-Driven Development: writing failing tests, seeing them fail, writing minimal code to pass, and verifying success before proceeding.
 - **🔍 Quality Gates** - Automated code review after each phase ensures standards are met before moving forward.
 - **📋 Documentation Trail** - Comprehensive plan files and phase completion records create an audit trail for reviewing all work completed.
-- **⚡ MCP Elicitation (native UI prompts)** - MCP elicitation enables seamless user input via native UI prompts without breaking conversation flow (optional setup).
+- **⚡ MCP Elicitation (native UI prompts)** - MCP Elicitation enables seamless user input via native UI prompts without breaking conversation flow (optional setup).
 - **🔄 Iterative Cycles** - Each implementation phase follows the complete cycle: implement → review → commit before proceeding to the next phase.
-- **💎 Keeps Context Concise** - The majority of the work is done in dedicated subagents, each with its own context window and dedciated prompt. This helps reduce hallucinations as the context window fills up.
+- **💎 Keeps Context Concise** - The majority of the work is done in dedicated subagents, each with its own context window and dedicated prompt. This helps reduce hallucinations as the context window fills up.
 
 ## Architecture Overview
 
@@ -90,7 +90,7 @@ graph TD
 
 Before using the GitHub Copilot Orchestra, ensure you have:
 
-- **VS Code Insiders** - Required for the custom chat modes feature that enables subagents and handing tasks off to them.
+- **VS Code Insiders** - Required for the custom chat modes feature that enables subagents and handing off tasks to them.
   - Download from: <https://code.visualstudio.com/insiders/>
 
 - **GitHub Copilot Subscription** - Active subscription required for AI-powered agents
@@ -118,7 +118,7 @@ Before using the GitHub Copilot Orchestra, ensure you have:
     - Ensure the latest VSCode is installed and running.
     - Confirm the GitHub Copilot Chat extension is active (check the chat icon in the sidebar).
     - Verify your workspace is a git repository (run `git status` to confirm)
-        - If not, you can use `git init` if you have git installed.
+        - If not, run `git init`.
 
 ### Setup Custom Agents
 
@@ -147,7 +147,7 @@ The GitHub Copilot Orchestra uses custom chat modes in VSCode to enable the mult
             - Something like `/Users/username/Library/Application Support/Code/User/prompts` on Mac, or the equivalent on your system
         - **OR:**
         - Manual Setup Process:
-            - Click the chat mode dropdown at the bottom of the copilot chat.
+            - Click the chat mode dropdown at the bottom of the Copilot Chat panel.
             - Click "Configure Custom Agents".
             - Click "Create new custom agent" in the command dropdown at the top of VSCode.
             - Select "User Data"
@@ -174,7 +174,7 @@ The GitHub Copilot Orchestra uses custom chat modes in VSCode to enable the mult
 
 ## Optional: MCP Elicitation Setup
 
-By default, the Conductor agent will pause and wait for you to start a new chat session at critical points (plan approval, phase commits). You can optionally enable **MCP elicitation** for a seamless, single-session workflow.
+By default, the Conductor agent will pause and wait for you to start a new chat session at critical points (plan approval, phase commits). You can optionally enable **MCP Elicitation** for a seamless, single-session workflow.
 
 ### Benefits of MCP Elicitation
 
@@ -251,7 +251,7 @@ By default, the Conductor agent will pause and wait for you to start a new chat 
 
 3. **Restart VS Code**
 
-**Verify Installation:** Open Copilot Chat, select `Conductor` and ask "What tools do you have access to?" — confirm `copilot-orchestra-mcp/request_plan_approval` and `copilot-orchestra-mcp/request_phase_commit` are listed.
+**Verify Installation:** Open GitHub Copilot Chat, select `Conductor` and ask "What tools do you have access to?" — confirm `copilot-orchestra-mcp/request_plan_approval` and `copilot-orchestra-mcp/request_phase_commit` are listed.
 
 ### Updating the MCP Server
 
@@ -292,12 +292,12 @@ By default, the Conductor agent will pause and wait for you to start a new chat 
 - `Update repo: git pull origin main`
 - `Rollback: mv Conductor.agent.md.backup Conductor.agent.md && remove mcp config from settings if needed`
 
-### How It Works
+### How MCP Elicitation Works
 
-With MCP elicitation enabled:
+With MCP Elicitation enabled:
 
-- **Plan Approval:** MCP elicitation dropdown appears with "approve" or "request revision" options
-- **Phase Commits:** MCP elicitation form with "proceed", "request revision", or "abort" options
+- **Plan Approval:** MCP Elicitation dropdown appears with "approve" or "request revision" options
+- **Phase Commits:** MCP Elicitation form with "proceed", "request revision", or "abort" options
 - **Feedback:** Optional text fields let you provide specific guidance
 
 All within a single continuous conversation!
@@ -398,14 +398,14 @@ Here's a realistic scenario demonstrating the complete workflow:
 
 ### Scenario: Adding User Authentication
 
-**Initial Request:**
+#### Initial Request
 
-```
+```text
 I need to add JWT-based user authentication to my Express API. 
 Users should be able to register, login, and access protected routes.
 ```
 
-**1. Planning Phase**
+#### Phase 1 — Planning
 
 - `Conductor` delegates to `planning-subagent` to analyze your Express codebase.
 - `planning-subagent` identifies existing patterns, middleware structure, and testing setup.
@@ -416,11 +416,11 @@ Users should be able to register, login, and access protected routes.
     4. Authentication middleware.
     5. Integration and end-to-end tests.
 
-**2. You review and approve the plan**
+#### Phase 2 — Plan Approval
 
-- The `Conductor` comes back to the user with the draft of the plan. Immediately after presenting the synopsis, the `Conductor` will invoke the MCP plan approval tool and present the MCP elicitation UI (native UI prompt). Use that approval prompt to choose `approve` or `request_revision` and optionally provide short feedback. Do NOT provide free‑text chat responses for approvals or decisions — always use the MCP elicitation UI (native UI prompt).
+The `Conductor` comes back to the user with the draft of the plan. Immediately after presenting the synopsis, the `Conductor` will invoke the MCP plan approval tool and present the MCP Elicitation UI (native UI prompt). Use that approval prompt to choose `approve` or `request_revision` and optionally provide short feedback. Do NOT provide free‑text chat responses for approvals or decisions — always use the MCP Elicitation UI (native UI prompt).
 
-**3. Implementation -> Review -> Commit Cycle - Phase 1**
+#### Phase 3 — Implementation (Phase 1)
 
 - `Conductor` invokes `implement-subagent` for "User model and database schema".
 - `implement-subagent`:
@@ -433,7 +433,7 @@ Users should be able to register, login, and access protected routes.
 - `code-review-agent` returns `APPROVED`.
 - `Conductor` presents summary and commit message to user:
 
-    ```
+    ```text
     feat: Add User model with password hashing
     
     - Create User schema with email and password fields
@@ -442,9 +442,10 @@ Users should be able to register, login, and access protected routes.
     - Write comprehensive User model tests
     ```
 
-- **Approve the phase commit using the MCP elicitation UI (native UI prompt) (select `proceed` to continue, `request_revision` to request changes, or `abort` to stop).** Do not reply with free‑text chat for these decisions.
+- **Approve the phase commit using the MCP Elicitation UI (native UI prompt) (select `proceed` to continue, `request_revision` to request changes, or `abort` to stop).** Do not reply with free‑text chat for these decisions.
 
-**4. Remaining Phases**
+#### Phase 4 — Remaining Phases
+
 The cycle repeats for each remaining phase:
 
 - Phase 2: Registration endpoint.
@@ -454,7 +455,7 @@ The cycle repeats for each remaining phase:
 
 Each phase follows: **Implementation → Review → Commit** cycle.
 
-**5. Completion**
+#### Phase 5 — Completion
 
 - All phases complete.
 - `Conductor` generates `plans/user-authentication-complete.md` with a full summary of what was accomplished.
